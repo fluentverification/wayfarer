@@ -83,12 +83,7 @@ rate_weight: The amount of weight to put in the CTMC rate
 	return vecs
 
 def angle(v1, v2):
-	return np.arccos(
-				np.clip(
-					v1 / np.linalg.norm(v1)
-					, v2 / np.linalg.norm(v2)
-				)
-			)
+	return np.arccos(np.dot(v1, v2) / np.linalg.norm(v1) + np.linalg.norm(v2))
 
 def vass_distance(state, boundary, exact_equal=False):
 	'''
@@ -100,7 +95,7 @@ boundary: The variable boundaries
 	# boundary distance vectors, and since each species is an element in the vector, we just
 	# need a vector with each species' distance in its index
 	assert(len(state) == len(boundary))
-	return np.matrix([
+	return np.array([
 			species_distance(
 				state[i]
 				, boundary[i].bound

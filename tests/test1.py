@@ -37,11 +37,11 @@ crn = Crn([
 		)
 	]
 	# The satisfying condition
-	, [Bound(650, BoundTypes.GREATER_THAN), Bound(20, BoundTypes.GREATER_THAN), Bound(3, BoundTypes.EQUAL)]
+	, [Bound(200, BoundTypes.GREATER_THAN), Bound(2, BoundTypes.GREATER_THAN), Bound(3, BoundTypes.GREATER_THAN)]
 	# , lambda state : return state[0] > 650 and state[1] > 20 and state[3] == 8
 	# The initial state
-	, np.matrix([0, 0, 0])
+	, np.array([0, 0, 0])
 )
 
 if __name__=="__main__":
-	find_counterexamples(crn, number=3)
+	find_counterexamples(crn, number=3, print_when_done=True)

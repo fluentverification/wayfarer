@@ -5,7 +5,7 @@ class Transition:
 	# enabled     #: lambda
 	# rate_finder #: lambda
 	def __init__(self, vector, enabled, rate_finder):
-		self.vector = np.matrix(vector)
+		self.vector = np.array(vector)
 		self.enabled_lambda = enabled
 		self.rate_finder = rate_finder
 
