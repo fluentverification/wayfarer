@@ -1,5 +1,9 @@
 import numpy as np
 
+from crn import *
+
+# from counterexample import get_transitions
+
 class BoundTypes:
 	LESS_THAN=0
 	LESS_THAN_EQ=0
@@ -11,6 +15,18 @@ class Bound:
 	def __init__(self, bound, bound_type):
 		self.bound = bound
 		self.bound_type = bound_type
+
+def get_transitions(state, crn : Crn):
+	'''
+Use properties of a VASS to get the enabled transitions of a particular
+	'''
+	# global all_transitions
+	transitions = []
+	for transition in crn.transitions:
+		if transition.enabled(state):
+			next_state = state + transition.vector
+			transitions.append((transition.rate_finder(state), next_state))
+	return transitions
 
 def species_distance(value, bound, bound_type=BoundTypes.EQUAL, normalize=True):
 	norm_factor = 1 if normalize else abs(value - bound)
@@ -84,7 +100,7 @@ boundary: The variable boundaries
 	# boundary distance vectors, and since each species is an element in the vector, we just
 	# need a vector with each species' distance in its index
 	assert(len(state) == len(boundary))
-	return np.vector([
+	return np.matrix([
 			species_distance(
 				state[i]
 				, boundary[i].bound
@@ -92,8 +108,8 @@ boundary: The variable boundaries
 			) for i in range(len(state))
 		])
 
-def vass_priority(state, boundary):
-	transitions = get_transitions(state)
+def vass_priority(state, boundary, crn):
+	transitions = get_transitions(state, crn)
 	flow_vector = direction_vector(state, transitions)
 	dist_vector = vass_distance(state, boundary)
 	flow_dist_angle = angle(flow_vector, dist_vector)

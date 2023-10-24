@@ -1,5 +1,5 @@
-from .distance import *
-from .crn import *
+from distance import *
+from crn import *
 
 import queue
 
@@ -7,17 +7,6 @@ backward_pointers = {}
 counterexamples = []
 
 all_transitions = []
-
-def get_transitions(state, crn : Crn):
-	'''
-Use properties of a VASS to get the enabled transitions of a particular
-	'''
-	# global all_transitions
-	transitions = []
-	for transition in crn.transitions:
-		if transition.enabled(state):
-			transitions.append((transition.rate_finder(state), state))
-	return transitions
 
 def traceback(c_state, tail=[]):
 	'''
@@ -47,12 +36,12 @@ def find_counterexamples(crn, number=1):
 	# we can eventually multithread this
 	global counterexamples
 	curr_state = None
-	pq.put((vass_priority(init_state), init_state))
+	pq.put((vass_priority(init_state, boundary, crn), init_state))
 	while (not pq.empty()) and len(counterexamples) < number:
 		curr_state = pq.get()
 		if satisfies(curr_state, boundary):
 			traceback(curr_state)
-		priority = vass_priority(curr_state)
+		priority = vass_priority(curr_state, boundary, crn)
 		for _, next_state in get_transitions(curr_state, crn):
 			if not next_state in backward_pointers:
 				backward_pointers[next_state] = [curr_state]

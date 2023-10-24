@@ -40,7 +40,7 @@ crn = Crn([
 	, [Bound(650, BoundTypes.GREATER_THAN), Bound(20, BoundTypes.GREATER_THAN), Bound(3, BoundTypes.EQUAL)]
 	# , lambda state : return state[0] > 650 and state[1] > 20 and state[3] == 8
 	# The initial state
-	, np.vector([0, 0, 0])
+	, np.matrix([0, 0, 0])
 )
 
 if __name__=="__main__":
