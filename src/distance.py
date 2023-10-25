@@ -54,6 +54,9 @@ def species_satisfies(value, bound, bound_type=BoundTypes.EQUAL):
 		raise Exception(f"bound_type not supported: '{bound_type}'!")
 
 def satisfies(state, boundary):
+	'''
+Checks to see if a state satisfies (or is within) the boundary
+	'''
 	assert(len(state) == len(boundary))
 	for i in range(len(state)):
 		# dist = species_distance(state[i], boundary[i].bound, boundary[i].bound_type)
