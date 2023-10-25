@@ -82,7 +82,9 @@ def find_counterexamples(crn, number=1, print_when_done=False):
 def print_counterexamples():
 	global counterexamples
 	print(f"Finished finding {len(counterexamples)} counterexamples")
+	lower_bound = 0.0
 	for est_prob, ce in counterexamples:
+		lower_bound += est_prob
 		print(f"Counterexample (esimated probability {est_prob})")
 		# print(ce)
 		for i in range(len(ce)):
@@ -93,3 +95,4 @@ def print_counterexamples():
 			elif i == len(ce) - 1:
 				additional_message = " (initial state)"
 			print(f"\tState: {state}{additional_message}")
+	print(f"Total lower bound probability: {lower_bound}")
