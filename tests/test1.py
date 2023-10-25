@@ -37,7 +37,7 @@ crn = Crn([
 		)
 	]
 	# The satisfying condition
-	, [Bound(200, BoundTypes.GREATER_THAN), Bound(2, BoundTypes.GREATER_THAN), Bound(3, BoundTypes.GREATER_THAN)]
+	, [Bound(200, BoundTypes.GREATER_THAN), Bound(2, BoundTypes.GREATER_THAN), Bound(98, BoundTypes.EQUAL)]
 	# , lambda state : return state[0] > 650 and state[1] > 20 and state[3] == 8
 	# The initial state
 	, np.array([0, 0, 0])

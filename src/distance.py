@@ -6,10 +6,10 @@ from crn import *
 
 class BoundTypes:
 	LESS_THAN=0
-	LESS_THAN_EQ=0
-	EQUAL=1
-	GREATER_THAN=2
-	GREATER_THAN_EQ=2
+	LESS_THAN_EQ=1
+	EQUAL=2
+	GREATER_THAN=3
+	GREATER_THAN_EQ=4
 
 class Bound:
 	def __init__(self, bound, bound_type):
@@ -32,19 +32,33 @@ def species_distance(value, bound, bound_type=BoundTypes.EQUAL, normalize=True):
 	norm_factor = 1 if normalize else abs(value - bound)
 	if bound_type == BoundTypes.EQUAL:
 		return abs(value - bound) / norm_factor
-	elif bound_type == BoundTypes.LESS_THAN: # LESS_THAN_EQ is counted here too
+	elif bound_type == BoundTypes.LESS_THAN or bound_type == BoundTypes.LESS_THAN_EQ: # LESS_THAN_EQ is counted here too
 		return max(value - bound, 0) / norm_factor
-	elif bound_type == BoundTypes.GREATER_THAN:
+	elif bound_type == BoundTypes.GREATER_THAN or bound_type == BoundTypes.GREATER_THAN:
 		return max(bound - value, 0) / norm_factor
+	else:
+		raise Exception(f"bound_type not supported: '{bound_type}'!")
+
+def species_satisfies(value, bound, bound_type=BoundTypes.EQUAL):
+	if bound_type == BoundTypes.EQUAL:
+		return value == bound
+	elif bound_type == BoundTypes.LESS_THAN:
+		return value < bound
+	elif bound_type == BoundTypes.LESS_THAN_EQ:
+		return value <= bound
+	elif bound_type == BoundTypes.GREATER_THAN:
+		return value > bound
+	elif bound_type == BoundTypes.GREATER_THAN:
+		return value >= bound
 	else:
 		raise Exception(f"bound_type not supported: '{bound_type}'!")
 
 def satisfies(state, boundary):
 	assert(len(state) == len(boundary))
 	for i in range(len(state)):
-		dist = species_distance(state[i], boundary[i].bound, boundary[i].bound_type)
-		print(f"Distance = {dist}")
-		if dist != 0:
+		# dist = species_distance(state[i], boundary[i].bound, boundary[i].bound_type)
+		# print(f"Distance = {dist}")
+		if not species_satisfies(state[i], boundary[i].bound, boundary[i].bound_type):# dist != 0:
 			return False
 	return True
 

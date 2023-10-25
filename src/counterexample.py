@@ -29,6 +29,7 @@ recursive algorithm to get all tracebacks to init state from current state
 	new_tail.append(c_state)
 	for state in backward_pointers[c_state]:
 		if not state in backward_pointers:
+			new_tail.append(state)
 			counterexamples.append(new_tail)
 			num_counterexamples = len(counterexamples)
 			print(f"Found counterexample! Now we have {len(counterexamples)}")
@@ -54,7 +55,7 @@ def find_counterexamples(crn, number=1, print_when_done=False):
 	pq.put((state_priority, tuple(init_state)))
 	num_explored = 0
 	while (not pq.empty()) and num_counterexamples < number:
-		print(num_counterexamples)
+		# print(num_counterexamples)
 		num_explored += 1
 		curr_state = pq.get()[1]
 		if satisfies(curr_state, boundary):
@@ -78,4 +79,13 @@ def print_counterexamples():
 	global counterexamples
 	print(f"Finished finding {len(counterexamples)} counterexamples")
 	for ce in counterexamples:
-		print(ce)
+		print("Counterexample")
+		# print(ce)
+		for i in range(len(ce)):
+			state = ce[i]
+			additional_message = ""
+			if i == 0:
+				additional_message = " (satisfying state)"
+			elif i == len(ce) - 1:
+				additional_message = " (initial state)"
+			print(f"\tState: {state}{additional_message}")
