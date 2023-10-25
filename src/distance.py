@@ -33,17 +33,20 @@ def species_distance(value, bound, bound_type=BoundTypes.EQUAL, normalize=True):
 	if bound_type == BoundTypes.EQUAL:
 		return abs(value - bound) / norm_factor
 	elif bound_type == BoundTypes.LESS_THAN: # LESS_THAN_EQ is counted here too
-		return min(value - bound, 0) / norm_factor
+		return max(value - bound, 0) / norm_factor
 	elif bound_type == BoundTypes.GREATER_THAN:
-		return min(bound - value, 0) / norm_factor
+		return max(bound - value, 0) / norm_factor
 	else:
 		raise Exception(f"bound_type not supported: '{bound_type}'!")
 
 def satisfies(state, boundary):
 	assert(len(state) == len(boundary))
 	for i in range(len(state)):
-		if species_distance(state[i], boundary[i].bound, boundary[i].bound_type, False) != 0:
+		dist = species_distance(state[i], boundary[i].bound, boundary[i].bound_type)
+		print(f"Distance = {dist}")
+		if dist != 0:
 			return False
+	return True
 
 def averaging_total_distance(state, bounds, bound_types, weights=None, normalize=True):
 	assert(len(state) == len(bounds) == len(bound_types))
