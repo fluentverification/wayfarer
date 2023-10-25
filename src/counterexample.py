@@ -37,19 +37,22 @@ def find_counterexamples(crn, number=1, print_when_done=False):
 	# we can eventually multithread this
 	global counterexamples
 	curr_state = None
-	pq.put((vass_priority(init_state, boundary, crn), init_state))
+	state_priority = vass_priority(init_state, boundary, crn)
+	print(f"State {init_state} has priority {state_priority}")
+	pq.put((state_priority, tuple(init_state)))
 	num_explored = 0
 	while (not pq.empty()) and len(counterexamples) < number:
 		num_explored += 1
 		curr_state = pq.get()[1]
 		if satisfies(curr_state, boundary):
 			traceback(curr_state)
-		else:
-			print(f"State {curr_state} does not satisfy condition")
+		# else:
+			# print(f"State {curr_state} does not satisfy condition")
 		for _, next_state in get_transitions(curr_state, crn):
 			if not tuple(next_state) in backward_pointers:
 				priority = vass_priority(next_state, boundary, crn)
-				pq.put((priority, next_state))
+				# print(f"State {next_state} has priority {priority}")
+				pq.put((priority, tuple(next_state)))
 				backward_pointers[tuple(next_state)] = [curr_state]
 			else:
 				backward_pointers[tuple(next_state)].append(curr_state)
