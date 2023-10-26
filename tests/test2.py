@@ -49,12 +49,12 @@ crn = Crn([
 		)
 	]
 	# The satisfying condition
-	# At least 3.3845545545021705e-15
+	# At least 6.852600255650947e-75
 	, [Bound(200, BoundTypes.GREATER_THAN), Bound(2, BoundTypes.GREATER_THAN), Bound(98, BoundTypes.EQUAL), Bound(98, BoundTypes.EQUAL)]
-	# At least 8.582539799321102e-22
-	# , [Bound(400, BoundTypes.GREATER_THAN), Bound(10, BoundTypes.GREATER_THAN), Bound(98, BoundTypes.EQUAL)]
-	# At least 8.340222635213895e-24
-	# , [Bound(600, BoundTypes.GREATER_THAN), Bound(10, BoundTypes.GREATER_THAN), Bound(98, BoundTypes.EQUAL)]
+	# At least 1.7743981340125083e-91
+	# , [Bound(400, BoundTypes.GREATER_THAN), Bound(10, BoundTypes.GREATER_THAN), Bound(98, BoundTypes.EQUAL), Bound(98, BoundTypes.EQUAL)]
+	# At least 6.518817323914444e-103
+	# , [Bound(600, BoundTypes.GREATER_THAN), Bound(10, BoundTypes.GREATER_THAN), Bound(98, BoundTypes.EQUAL), Bound(98, BoundTypes.EQUAL)]
 	# , lambda state : return state[0] > 650 and state[1] > 20 and state[3] == 8
 	# The initial state
 	, np.array([0, 0, 0, 0])
@@ -65,13 +65,13 @@ if __name__=="__main__":
 	print("Targeted Exploration")
 	print("========================================================")
 	start_time = time.time()
-	find_counterexamples(crn, number=3, print_when_done=True)
+	find_counterexamples(crn, number=10, print_when_done=True)
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 	print("========================================================")
 	print("Random Exploration")
 	print("========================================================")
 	start_time = time.time()
-	find_counterexamples_randomly(crn, number=3, print_when_done=True)
+	find_counterexamples_randomly(crn, number=10, print_when_done=True)
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
