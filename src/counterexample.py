@@ -7,6 +7,7 @@ TRACEBACK_BOUND=10
 DESIRED_NUMBER_COUNTEREXAMPLES=2
 
 backward_pointers = {}
+reaches = {}
 counterexamples = []
 num_counterexamples = 0
 
@@ -52,6 +53,7 @@ def find_counterexamples(crn, number=1, print_when_done=False):
 	curr_state = None
 	state_priority = vass_priority(init_state, boundary, crn)
 	print(f"State {init_state} has priority {state_priority}")
+	reaches[tuple(init_state)] = 1.0
 	pq.put((state_priority, tuple(init_state)))
 	num_explored = 0
 	while (not pq.empty()) and num_counterexamples < number:
@@ -65,13 +67,19 @@ def find_counterexamples(crn, number=1, print_when_done=False):
 			# print(f"State {curr_state} does not satisfy condition")
 		transitions = get_transitions(curr_state, crn)
 		total_rate = 0.0
+		reach = reaches[curr_state]
 		for rate, _ in transitions:
 			total_rate += rate
 		for rate, next_state in transitions:
 			if not tuple(next_state) in backward_pointers:
-				priority = vass_priority(next_state, boundary, crn)
 				# print(f"State {next_state} has priority {priority}")
-				pq.put((priority, tuple(next_state)))
+				next_state_tuple = tuple(next_state)
+				# Only explore new states
+				if not next_state_tuple in reaches:
+					curr_reach = rate / total_rate * reach
+					priority = vass_priority(next_state, boundary, crn, curr_reach)
+					reaches[next_state_tuple] = curr_reach
+					pq.put((priority, next_state_tuple))
 				backward_pointers[tuple(next_state)] = [(rate / total_rate, curr_state)]
 			else:
 				backward_pointers[tuple(next_state)].append((rate / total_rate, curr_state))

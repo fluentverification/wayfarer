@@ -123,13 +123,14 @@ boundary: The variable boundaries
 			) for i in range(len(state))
 		])
 
-def vass_priority(state, boundary, crn):
+def vass_priority(state, boundary, crn, reach=1.0):
 	transitions = get_transitions(state, crn)
 	flow_vector = direction_vector(state, transitions)
 	dist_vector = vass_distance(state, boundary)
 	flow_dist_angle = angle(flow_vector, dist_vector)
 	v_dist = np.linalg.norm(dist_vector)
+	flow_magnitude = np.linalg.norm(flow_vector)
 	# TODO: we want to minimize flow_dist_angle, and also minimize v_dist
 	# if possible, also maximizing the magnitude of the flow vector, assuming
 	# the angle is low enough
-	return flow_dist_angle + v_dist
+	return (flow_dist_angle + v_dist) / flow_magnitude * reach
