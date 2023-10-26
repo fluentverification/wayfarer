@@ -105,11 +105,13 @@ def find_counterexamples_randomly(crn, number=1, print_when_done=False, trace_le
 	global DESIRED_NUMBER_COUNTEREXAMPLES
 	global backward_pointers
 	global num_counterexamples
+	global counterexamples
+	ces_set = {}
 	DESIRED_NUMBER_COUNTEREXAMPLES = number
 	boundary = crn.boundary
 	init_state = crn.init_state
 	while num_counterexamples < number:
-		ce = [init_state]
+		ce = [tuple(init_state)]
 		curr_state = init_state
 		prob = 1.0
 		for _ in range(trace_length):
@@ -118,13 +120,17 @@ def find_counterexamples_randomly(crn, number=1, print_when_done=False, trace_le
 			for rate, _ in transitions:
 				total_rate += rate
 			chosen_transition = transitions[random.randint(0, len(transitions) - 1)]
-			next_state = chosen_transition[1]
+			next_state = tuple(chosen_transition[1])
 			next_rate = chosen_transition[0]
 			prob *= next_rate / total_rate
 			ce.append(next_state)
 			if satisfies(next_state, boundary):
 				num_counterexamples += 1
-				counterexamples.append((prob, ce))
+				ce_tup = tuple(ce)
+				# print(ce_tup)
+				if not ce_tup in ces_set:
+					counterexamples.append((prob, ce))
+					ces_set[ce_tup] = True
 			else:
 				curr_state = next_state
 	if print_when_done:
