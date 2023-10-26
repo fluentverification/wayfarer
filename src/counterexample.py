@@ -2,6 +2,7 @@ from distance import *
 from crn import *
 
 import queue
+import random
 
 TRACEBACK_BOUND=10
 DESIRED_NUMBER_COUNTEREXAMPLES=2
@@ -12,6 +13,17 @@ counterexamples = []
 num_counterexamples = 0
 
 all_transitions = []
+
+def reset():
+	# global DESIRED_NUMBER_COUNTEREXAMPLES
+	global backward_pointers
+	global reaches
+	global counterexamples
+	global num_counterexamples
+	num_counterexamples = 0
+	counterexamples = []
+	reaches = {}
+	backward_pointers = {}
 
 def traceback(c_state, tail=[], tail_probability = 1.0):
 	'''
@@ -33,14 +45,16 @@ recursive algorithm to get all tracebacks to init state from current state
 			new_tail.append(state)
 			counterexamples.append((tail_probability * normalized_rate, new_tail))
 			num_counterexamples = len(counterexamples)
-			print(f"Found counterexample! Now we have {len(counterexamples)}")
+			# print(f"Found counterexample! Now we have {len(counterexamples)}")
 		else:
 			traceback(state, new_tail, tail_probability * normalized_rate)
 	# print(f"ERROR: found no counterexample in traceback!")
 
 def find_counterexamples(crn, number=1, print_when_done=False):
+	reset()
 	global DESIRED_NUMBER_COUNTEREXAMPLES
 	global backward_pointers
+	global num_counterexamples
 	DESIRED_NUMBER_COUNTEREXAMPLES = number
 	boundary = crn.boundary
 	init_state = crn.init_state
@@ -49,7 +63,6 @@ def find_counterexamples(crn, number=1, print_when_done=False):
 	pq = queue.PriorityQueue()
 	# TODO: according to the same docs, these queues are threadsafe, so
 	# we can eventually multithread this
-	global num_counterexamples
 	curr_state = None
 	state_priority = vass_priority(init_state, boundary, crn)
 	print(f"State {init_state} has priority {state_priority}")
@@ -87,7 +100,38 @@ def find_counterexamples(crn, number=1, print_when_done=False):
 		print(f"Explored {num_explored} states")
 		print_counterexamples()
 
-def print_counterexamples():
+def find_counterexamples_randomly(crn, number=1, print_when_done=False, trace_length=100):
+	reset()
+	global DESIRED_NUMBER_COUNTEREXAMPLES
+	global backward_pointers
+	global num_counterexamples
+	DESIRED_NUMBER_COUNTEREXAMPLES = number
+	boundary = crn.boundary
+	init_state = crn.init_state
+	while num_counterexamples < number:
+		ce = [init_state]
+		curr_state = init_state
+		prob = 1.0
+		for _ in range(trace_length):
+			transitions = get_transitions(curr_state, crn)
+			total_rate = 0.0
+			for rate, _ in transitions:
+				total_rate += rate
+			chosen_transition = transitions[random.randint(0, len(transitions) - 1)]
+			next_state = chosen_transition[1]
+			next_rate = chosen_transition[0]
+			prob *= next_rate / total_rate
+			ce.append(next_state)
+			if satisfies(next_state, boundary):
+				num_counterexamples += 1
+				counterexamples.append((prob, ce))
+			else:
+				curr_state = next_state
+	if print_when_done:
+		print_counterexamples()
+
+
+def print_counterexamples(show_entire_trace=False):
 	global counterexamples
 	print(f"Finished finding {len(counterexamples)} counterexamples")
 	lower_bound = 0.0
@@ -95,12 +139,13 @@ def print_counterexamples():
 		lower_bound += est_prob
 		print(f"Counterexample (esimated probability {est_prob})")
 		# print(ce)
-		for i in range(len(ce)):
-			state = ce[i]
-			additional_message = ""
-			if i == 0:
-				additional_message = " (satisfying state)"
-			elif i == len(ce) - 1:
-				additional_message = " (initial state)"
-			print(f"\tState: {state}{additional_message}")
+		if show_entire_trace:
+			for i in range(len(ce)):
+				state = ce[i]
+				additional_message = ""
+				if i == 0:
+					additional_message = " (satisfying state)"
+				elif i == len(ce) - 1:
+					additional_message = " (initial state)"
+				print(f"\tState: {state}{additional_message}")
 	print(f"Total lower bound probability: {lower_bound}")

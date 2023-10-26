@@ -3,6 +3,8 @@
 from crn import *
 from counterexample import *
 
+import time
+
 crn = Crn([
 	# Transition system
 	Transition(
@@ -44,4 +46,17 @@ crn = Crn([
 )
 
 if __name__=="__main__":
+	print("========================================================")
+	print("Targeted Exploration")
+	print("========================================================")
+	start_time = time.time()
 	find_counterexamples(crn, number=3, print_when_done=True)
+	end_time = time.time()
+	print(f"Total time {end_time - start_time} s")
+	print("========================================================")
+	print("Random Exploration")
+	print("========================================================")
+	start_time = time.time()
+	find_counterexamples_randomly(crn, number=3, print_when_done=True)
+	end_time = time.time()
+	print(f"Total time {end_time - start_time} s")
