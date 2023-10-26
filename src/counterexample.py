@@ -125,13 +125,16 @@ def find_counterexamples_randomly(crn, number=1, print_when_done=False, trace_le
 			prob *= next_rate / total_rate
 			ce.append(next_state)
 			if satisfies(next_state, boundary):
+				# print(next_state, " satisfies")
 				num_counterexamples += 1
 				ce_tup = tuple(ce)
 				# print(ce_tup)
 				if not ce_tup in ces_set:
 					counterexamples.append((prob, ce))
 					ces_set[ce_tup] = True
+					break
 			else:
+				# print(next_state, " does not satisfy")
 				curr_state = next_state
 	if print_when_done:
 		print_counterexamples()
@@ -143,7 +146,7 @@ def print_counterexamples(show_entire_trace=False):
 	lower_bound = 0.0
 	for est_prob, ce in counterexamples:
 		lower_bound += est_prob
-		print(f"Counterexample (esimated probability {est_prob})")
+		print(f"Counterexample size {len(ce)} (esimated probability {est_prob})")
 		# print(ce)
 		if show_entire_trace:
 			for i in range(len(ce)):
