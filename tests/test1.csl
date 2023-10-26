@@ -1,1 +1,6 @@
-P=? [ true U ((varA > 200) & (varB > 2) & (varC = 98)) ]
+// According to wayfarer, at least 3.3845545545021705e-15
+P=? [ true U ((varA > 200) & (varB > 2) & (varC == 98)) ]
+// According to wayfarer, at least 8.582539799321102e-22
+// P=? [ true U ((varA > 400) & (varB > 10) & (varC == 98)) ]
+// According to wayfarer, at least 8.340222635213895e-24
+// P=? [ true U ((varA > 600) & (varB > 10) & (varC == 98)) ]

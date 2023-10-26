@@ -39,7 +39,12 @@ crn = Crn([
 		)
 	]
 	# The satisfying condition
+	# At least 3.3845545545021705e-15
 	, [Bound(200, BoundTypes.GREATER_THAN), Bound(2, BoundTypes.GREATER_THAN), Bound(98, BoundTypes.EQUAL)]
+	# At least 8.582539799321102e-22
+	# , [Bound(400, BoundTypes.GREATER_THAN), Bound(10, BoundTypes.GREATER_THAN), Bound(98, BoundTypes.EQUAL)]
+	# At least 8.340222635213895e-24
+	# , [Bound(600, BoundTypes.GREATER_THAN), Bound(10, BoundTypes.GREATER_THAN), Bound(98, BoundTypes.EQUAL)]
 	# , lambda state : return state[0] > 650 and state[1] > 20 and state[3] == 8
 	# The initial state
 	, np.array([0, 0, 0])

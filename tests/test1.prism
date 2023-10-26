@@ -15,9 +15,9 @@ module Crn
 	[] varA > 50 -> 1.7 : (varA'=varA-10);
 	[] varA < 1000 -> 5.7 : (varA'=varA+40);
 	// Reactions for varB
-	[] varB > 1 -> 0.5 : (varA'=varA-1);
-	[] varB < 100 -> 3 : (varA'=varA+1);
+	[] varB > 1 -> 0.5 : (varB'=varB-1);
+	[] varB < 100 -> 3 : (varB'=varB+1);
 	// Reactions for varC
-	[] varC > 2 -> 0.3 : (varA'=varA-2);
-	[] varC < 100 -> 4 : (varA'=varA+10);
+	[] varC > 2 -> 0.3 : (varC'=varC-2);
+	[] varC < 100 -> 4 : (varC'=varC+10);
 endmodule
