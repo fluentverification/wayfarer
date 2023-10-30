@@ -103,7 +103,7 @@ rate_weight: The amount of weight to put in the CTMC rate
 	return vecs
 
 def angle(v1, v2):
-	return np.rad2deg(np.arccos(np.dot(v1, v2) / np.linalg.norm(v1) + np.linalg.norm(v2)))
+	return np.rad2deg(np.arccos(np.dot(v1, v2) / (np.linalg.norm(v1) * np.linalg.norm(v2))))
 
 def vass_distance(state, boundary, exact_equal=False):
 	'''
@@ -132,6 +132,7 @@ def vass_priority(state, boundary, crn, reach=1.0, include_flow_angle=False):
 		transitions = get_transitions(state, crn)
 		flow_vector = direction_vector(state, transitions)
 		flow_dist_angle = angle(flow_vector, dist_vector)
+		# print(f"Angle = {flow_dist_angle}")
 		# TODO: figure out better weight
 		WEIGHT = 2
 		# We want to minimize flow_dist_angle

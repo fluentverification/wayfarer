@@ -90,7 +90,7 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 				# Only explore new states
 				# if not next_state_tuple in reaches:
 				# curr_reach = rate / total_rate * reach
-				priority = vass_priority(next_state, boundary, crn) # , curr_reach)
+				priority = vass_priority(next_state, boundary, crn, include_flow_angle=include_flow_angle) # , curr_reach)
 				# reaches[next_state_tuple] = curr_reach
 				pq.put((priority, next_state_tuple))
 				backward_pointers[next_state_tuple] = [(rate / total_rate, curr_state)]
