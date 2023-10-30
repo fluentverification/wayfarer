@@ -50,7 +50,7 @@ recursive algorithm to get all tracebacks to init state from current state
 			traceback(state, new_tail, tail_probability * normalized_rate)
 	# print(f"ERROR: found no counterexample in traceback!")
 
-def find_counterexamples(crn, number=1, print_when_done=False):
+def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angle=False):
 	reset()
 	global DESIRED_NUMBER_COUNTEREXAMPLES
 	global backward_pointers
@@ -64,7 +64,7 @@ def find_counterexamples(crn, number=1, print_when_done=False):
 	# TODO: according to the same docs, these queues are threadsafe, so
 	# we can eventually multithread this
 	curr_state = None
-	state_priority = vass_priority(init_state, boundary, crn)
+	state_priority = vass_priority(init_state, boundary, crn, include_flow_angle=include_flow_angle)
 	print(f"State {init_state} has priority {state_priority}")
 	reaches[tuple(init_state)] = 1.0
 	pq.put((state_priority, tuple(init_state)))

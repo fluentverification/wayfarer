@@ -6,9 +6,9 @@ ctmc
 
 module Crn
 	// Three species
-	varA : [0..1001] init 0;
+	varA : [0..1041] init 0;
 	varB : [0..101] init 0;
-	varC : [0..101] init 0;
+	varC : [0..111] init 0;
 	
 	// Reactions, one increment and decrement per species
 	// Reactions for varA

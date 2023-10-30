@@ -52,10 +52,17 @@ crn = Crn([
 
 if __name__=="__main__":
 	print("========================================================")
-	print("Targeted Exploration")
+	print("Targeted Exploration (just distance)")
 	print("========================================================")
 	start_time = time.time()
 	find_counterexamples(crn, number=3, print_when_done=True)
+	end_time = time.time()
+	print(f"Total time {end_time - start_time} s")
+	print("========================================================")
+	print("Targeted Exploration (Distance and angle)")
+	print("========================================================")
+	start_time = time.time()
+	find_counterexamples(crn, number=10, print_when_done=True, include_flow_angle=True)
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 	print("========================================================")
