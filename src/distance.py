@@ -131,12 +131,12 @@ def vass_priority(state, boundary, crn, reach=1.0, include_flow_angle=False):
 	if include_flow_angle:
 		transitions = get_transitions(state, crn)
 		flow_vector = direction_vector(state, transitions)
-		flow_dist_angle = angle(flow_vector, dist_vector)
+		flow_dist_angle = np.abs(angle(flow_vector, dist_vector))
 		# print(f"Angle = {flow_dist_angle}")
 		# TODO: figure out better weight
-		WEIGHT = 2
+		WEIGHT = 1
 		# We want to minimize flow_dist_angle
-		priority += WEIGHT * flow_dist_angle
+		priority += WEIGHT * flow_dist_angle / 180
 
 	# flow_magnitude = np.linalg.norm(flow_vector)
 	# TODO: we want to minimize flow_dist_angle, and also minimize v_dist
