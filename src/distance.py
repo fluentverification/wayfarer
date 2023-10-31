@@ -115,7 +115,7 @@ boundary: The variable boundaries
 			) for i in range(len(state))
 		])
 
-def vass_priority(state, boundary, crn, reach=1.0, include_flow_angle=False, include_flow_mag=False, deprioritize_dont_cares=True):
+def vass_priority(state, boundary, crn, reach=1.0, include_flow_angle=False, include_flow_mag=False, deprioritize_dont_cares=False):
 	'''
 Creates a priority from a state based on a boundary. The lower the priority, the sooner we should explore the state.
 This means you should use a min queue
