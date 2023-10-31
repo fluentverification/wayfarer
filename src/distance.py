@@ -10,6 +10,7 @@ class BoundTypes:
 	EQUAL=2
 	GREATER_THAN=3
 	GREATER_THAN_EQ=4
+	DONT_CARE=5
 
 class Bound:
 	def __init__(self, bound, bound_type):
@@ -30,7 +31,9 @@ Use properties of a VASS to get the enabled transitions of a particular
 
 def species_distance(value, bound, bound_type=BoundTypes.EQUAL, normalize=True):
 	norm_factor = 1 if normalize else abs(value - bound)
-	if bound_type == BoundTypes.EQUAL:
+	if bound_type == BoundTypes.DONT_CARE:
+		return 0.0
+	elif bound_type == BoundTypes.EQUAL:
 		return abs(value - bound) / norm_factor
 	elif bound_type == BoundTypes.LESS_THAN or bound_type == BoundTypes.LESS_THAN_EQ: # LESS_THAN_EQ is counted here too
 		return max(value - bound, 0) / norm_factor
@@ -40,7 +43,9 @@ def species_distance(value, bound, bound_type=BoundTypes.EQUAL, normalize=True):
 		raise Exception(f"bound_type not supported: '{bound_type}'!")
 
 def species_satisfies(value, bound, bound_type=BoundTypes.EQUAL):
-	if bound_type == BoundTypes.EQUAL:
+	if bound_type == BoundTypes.DONT_CARE:
+		return True
+	elif bound_type == BoundTypes.EQUAL:
 		return value == bound
 	elif bound_type == BoundTypes.LESS_THAN:
 		return value < bound
