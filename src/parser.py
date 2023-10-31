@@ -8,16 +8,17 @@ def check_valid_identifier(identifier):
 Checks to see if the reactant identifier is valid.
 Does not yet cover all cases
 	'''
-	if not ' ' in identifier and not '.' in identifier and not identifier.isdigit():
+	if ' ' in identifier or '.' in identifier or identifier.isdigit():
 		print(f"[PARSE ERROR] '{identifier}' is an invalid identifier")
 		sys.exit(1)
 
 def create_species_idxes(reactants):
 	species_idxes = {}
 	for i in range(len(reactants)):
-		reactant = reactants[i]
-		check_valid_identifier()
-		species_idxes[reactant]
+		reactant = reactants[i].replace("\n", "")
+		# print(f"Adding reactant {reactant}")
+		check_valid_identifier(reactant)
+		species_idxes[reactant] = i
 	return species_idxes
 
 def create_bound(bound_text):
@@ -32,10 +33,20 @@ def create_transition(transition_line, species_idxes):
 	products = transition_info[sep_idx + 1:len(transition_info) - 1]
 	rate = float(transition_info[len(transition_info) - 1])
 	transition_vector = np.array([0 for _ in range(len(species_idxes))])
+	always_enabled = False
+	is_consumer = False
 	for reactant in reactants:
+		if reactant == "0":
+			always_enabled = True
+			break
 		transition_vector[species_idxes[reactant]] = -1
 	for product in products:
+		if product == "0":
+			is_consumer = True
+			break
 		transition_vector[species_idxes[product]] = 1
+	if always_enabled:
+		return Transition(transition_vector, lambda state : True, lambda state : rate)
 	reactant_idxes = [species_idxes[reactant] for reactant in reactants]
 	return Transition(transition_vector, lambda state : np.all([state[i] > 0 for i in reactant_idxes]), lambda state : rate)
 
@@ -51,4 +62,4 @@ def parse_ragtimer(filename):
 		bound_vals = lines[2].split("\t")
 		boundary = [create_bound(bound_val) for bound_val in bound_vals]
 		transitions = [create_transition(line, species_idxes) for line in lines[3:]]
-		return Crn(transitons, boundary, init_state)
+		return Crn(transitions, boundary, init_state)
