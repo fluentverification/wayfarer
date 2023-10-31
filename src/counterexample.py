@@ -7,6 +7,7 @@ import random
 TRACEBACK_BOUND=10
 DESIRED_NUMBER_COUNTEREXAMPLES=2
 
+force_end_traceback=False
 backward_pointers = {}
 reaches = {}
 counterexamples = []
@@ -27,14 +28,20 @@ def reset():
 
 def traceback(c_state, tail=[], tail_probability = 1.0):
 	'''
-recursive algorithm to get all tracebacks to init state from current state
+recursive algorithm to get SOME (not all) tracebacks to init state from current state
 	'''
 	# TODO: Dynamic programming version of this
 	global backward_pointers
 	global counterexamples
 	global DESIRED_NUMBER_COUNTEREXAMPLES
 	global num_counterexamples
-	if num_counterexamples >= DESIRED_NUMBER_COUNTEREXAMPLES + TRACEBACK_BOUND:
+	global force_end_traceback
+	if force_end_traceback or num_counterexamples >= DESIRED_NUMBER_COUNTEREXAMPLES + TRACEBACK_BOUND:
+		return
+	# If our tail probability is too small to handle or is zero we shouldn't continue exploring
+	if tail_probability == 0.0:
+		# We've probably found all of the counterexamples we can
+		force_end_traceback=True
 		return
 	# We can afford a copy of the tail on every call, since traceback is only called from
 	# satisfying states and works BACKWARDS
@@ -55,6 +62,7 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 	global DESIRED_NUMBER_COUNTEREXAMPLES
 	global backward_pointers
 	global num_counterexamples
+	global force_end_traceback
 	DESIRED_NUMBER_COUNTEREXAMPLES = number
 	boundary = crn.boundary
 	init_state = crn.init_state
@@ -69,12 +77,13 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 	reaches[tuple(init_state)] = 1.0
 	pq.put((state_priority, tuple(init_state)))
 	num_explored = 0
-	while (not pq.empty()) and num_counterexamples < number:
+	while (not pq.empty()) and num_counterexamples < number and not force_end_traceback:
 		# print(num_counterexamples)
 		num_explored += 1
 		curr_state = pq.get()[1]
 		if satisfies(curr_state, boundary):
 			print(f"Found satisfying state {curr_state}")
+			force_end_traceback = False
 			traceback(curr_state)
 		# else:
 			# print(f"State {curr_state} does not satisfy condition")
