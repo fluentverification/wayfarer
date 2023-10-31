@@ -123,7 +123,11 @@ boundary: The variable boundaries
 			) for i in range(len(state))
 		])
 
-def vass_priority(state, boundary, crn, reach=1.0, include_flow_angle=False):
+def vass_priority(state, boundary, crn, reach=1.0, include_flow_angle=False, include_flow_mag=False):
+	'''
+Creates a priority from a state based on a boundary. The lower the priority, the sooner we should explore the state.
+This means you should use a min queue
+	'''
 	dist_vector = vass_distance(state, boundary)
 	v_dist = np.linalg.norm(dist_vector)
 	priority = v_dist
@@ -137,8 +141,12 @@ def vass_priority(state, boundary, crn, reach=1.0, include_flow_angle=False):
 		WEIGHT = 1
 		# We want to minimize flow_dist_angle
 		priority += WEIGHT * flow_dist_angle / 180
+		if include_flow_mag:
+			flow_magnitude = np.linalg.norm(flow_vector)
+			# Maximize the magnitude of the flow vector
+			WEIGHT = 1
+			priority += 1 / flow_magnitude
 
-	# flow_magnitude = np.linalg.norm(flow_vector)
 	# TODO: we want to minimize flow_dist_angle, and also minimize v_dist
 	# if possible, also maximizing the magnitude of the flow vector, assuming
 	# the angle is low enough
