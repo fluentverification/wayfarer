@@ -73,14 +73,15 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 	# we can eventually multithread this
 	curr_state = None
 	state_priority = vass_priority(init_state, boundary, crn, include_flow_angle=include_flow_angle)
-	print(f"State {init_state} has priority {state_priority}")
+	# print(f"State {init_state} has priority {state_priority}")
 	reaches[tuple(init_state)] = 1.0
 	pq.put((state_priority, tuple(init_state)))
 	num_explored = 0
 	while (not pq.empty()) and num_counterexamples < number and not force_end_traceback:
 		# print(num_counterexamples)
 		num_explored += 1
-		curr_state = pq.get()[1]
+		curr_priority, curr_state = pq.get()
+		# print(f"Got state {curr_state} at priority {curr_priority}")
 		if satisfies(curr_state, boundary):
 			print(f"Found satisfying state {curr_state}")
 			force_end_traceback = False

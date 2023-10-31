@@ -4,19 +4,6 @@ from crn import *
 
 # from counterexample import get_transitions
 
-class BoundTypes:
-	LESS_THAN=0
-	LESS_THAN_EQ=1
-	EQUAL=2
-	GREATER_THAN=3
-	GREATER_THAN_EQ=4
-	DONT_CARE=5
-
-class Bound:
-	def __init__(self, bound, bound_type):
-		self.bound = bound
-		self.bound_type = bound_type
-
 def get_transitions(state, crn : Crn):
 	'''
 Use properties of a VASS to get the enabled transitions of a particular
@@ -128,13 +115,17 @@ boundary: The variable boundaries
 			) for i in range(len(state))
 		])
 
-def vass_priority(state, boundary, crn, reach=1.0, include_flow_angle=False, include_flow_mag=False):
+def vass_priority(state, boundary, crn, reach=1.0, include_flow_angle=False, include_flow_mag=False, deprioritize_dont_cares=True):
 	'''
 Creates a priority from a state based on a boundary. The lower the priority, the sooner we should explore the state.
 This means you should use a min queue
 	'''
 	dist_vector = vass_distance(state, boundary)
-	v_dist = np.linalg.norm(dist_vector)
+	v_dist = None
+	if deprioritize_dont_cares:
+		v_dist = np.linalg.norm(np.multiply(dist_vector, crn.react_depriority))
+	else:
+		v_dist = np.linalg.norm(dist_vector)
 	priority = v_dist
 
 	if include_flow_angle:
