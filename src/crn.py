@@ -27,7 +27,7 @@ class Transition:
 		return self.enabled_lambda(state)
 
 class Crn:
-	def __init__(self, transitions=None, boundary=None, init_state=None):
+	def __init__(self, transitions=None, boundary=None, init_state=None, all_trans_always_enabled=False, all_rates_const=False):
 		self.boundary = boundary
 		if transitions is None:
 			self.transitions = []
@@ -36,6 +36,8 @@ class Crn:
 		self.init_state = init_state
 		# self.prune_transitions()
 		self.react_depriority = np.array([0.0 if self.boundary[i].bound_type == BoundTypes.DONT_CARE else 1.0 for i in range(len(boundary))])
+		self.all_trans_always_enabled = all_trans_always_enabled
+		self.all_rates_const = all_rates_const
 
 	def add_transition(self, transition : Transition):
 		self.transitions.append(transition)
