@@ -3,9 +3,11 @@ import numpy as np
 from distance import vass_distance
 
 class RVecLevel:
-	def __init__(self, vector, level):
+	def __init__(self, vector, level, remaining_vecs=[]):
 		self.vector = vector
 		self.level  = level
+        A = np.matrix(vector.append(remaining_vecs, axis=1))
+        self.P =  A * (A.T * A) ** -1 * A
 
 # TODO: multiple paths to the target?
 # Maybe store projection matrices? P = A(A^T A)^-1 A
@@ -21,14 +23,15 @@ class SubspacePriority:
 		self.__subspace_distances = [
 			self.__dist_to_subspace(
 				state
-				# TODO
-				, SubspacePriority.ordered_reaction_vectors[i:]
-			) for i in range(len(SubspacePriority.ordered_reaction_vectors) - 1)
+				, v.P
+			) for v in SubspacePriority.ordered_reaction_vectors
 		]
 
-	def __dist_to_subspace(self, state, B):
-		P = A * (A.T * A) ** -1 * A
-		dist_vect = P * state
+	def __dist_to_subspace(self, state, P):
+		# project the state into the subspace, and then take the
+        # distance from the state to the projected state
+        # and then find the norm of that
+        dist_vect = state - P * state
 		return np.linalg.norm(dist_vect)
 
 	# Optimized NEQ with early termination
