@@ -19,13 +19,17 @@ class SubspacePriority:
 	boundary = None
 	def __init__(self, state):
 		self.__distance = vass_distance(state, SubspacePriority.boundary)
-		# TODO: Optimize if we are already in one space
-		self.__subspace_distances = [
-			self.__dist_to_subspace(
-				state
-				, v.P
-			) for v in SubspacePriority.ordered_reaction_vectors
-		]
+		L = len(SubspacePriority.ordered_reaction_vectors) - 1
+		self.__subspace_distances = [np.infinity for _ in SubspacePriority.ordered_reaction_vectors]
+		for i in range(len(self.__subspace_distances)):
+			P = SubspacePriority.ordered_reaction_vectors[L - i]
+			dist = np.linalg.norm(s - P * s)
+			self.__subspace_distances[L - i] = dist
+			# Short circuits because we know the rest of the distances are 0
+			if dist == 0:
+				for j in range(L - i):
+					self.__subspace_distances[j] = 0.0
+				break
 
 	def __dist_to_subspace(self, state, P):
 		# project the state into the subspace, and then take the
