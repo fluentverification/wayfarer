@@ -1,4 +1,9 @@
-import numpy as np
+USE_CUDA=False
+
+if not USE_CUDA:
+	import numpy as np
+else:
+	import cupy as np
 
 from distance import vass_distance
 
