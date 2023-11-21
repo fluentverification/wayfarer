@@ -7,6 +7,11 @@ else:
 
 from distance import vass_distance
 
+class Subspace:
+	def __init__(self, reactions, next_subspace):
+		self.reactions = reactions
+		self.next_subspace = next_subspace
+
 class RVecLevel:
 	def __init__(self, vector, level, remaining_vecs=[]):
 		self.vector = vector
@@ -80,3 +85,9 @@ class SubspacePriority:
 		return not self > other
 
 
+def create_pmatrixes_from_depgraph(root, A=None, Pmats=[]):
+	if A is None:
+		A = np.matrix(root.vec)
+	else:
+		A = A.copy()
+		A.
