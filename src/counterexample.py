@@ -1,5 +1,6 @@
 from distance import *
 from crn import *
+from subspace import *
 
 import queue
 import random
@@ -103,6 +104,41 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 				priority = vass_priority(next_state, boundary, crn, include_flow_angle=include_flow_angle) # , curr_reach)
 				# reaches[next_state_tuple] = curr_reach
 				pq.put((priority, next_state_tuple))
+				backward_pointers[next_state_tuple] = [(rate / total_rate, curr_state)]
+			else:
+				backward_pointers[tuple(next_state)].append((rate / total_rate, curr_state))
+	if print_when_done:
+		print(f"Explored {num_explored} states")
+		print_counterexamples()
+
+def find_counterexamples_subsp(crn, number=1, print_when_done=False, include_flow_angle=False):
+	reset()
+	global DESIRED_NUMBER_COUNTEREXAMPLES
+	global backward_pointers
+	global num_counterexamples
+	global force_end_traceback
+	DESIRED_NUMBER_COUNTEREXAMPLES = number
+	# Min queue
+	pq = queue.PriorityQueue()
+	curr_state = None
+	reaches[tuple(init_state)] = 1.0
+	pq.put((State(init_state)))
+	while (not pq.empty()) and num_counterexamples < number and not force_end_traceback:
+		num_explored += 1
+		curr_state_data = pq.get()
+		curr_state = curr_state_data.vec
+		if curr_state_data.order == -1:
+			print(f"Found satisfying state {curr_state}")
+			force_end_traceback = False
+			traceback(curr_state)
+		successors, total_rate = curr_state_data.successors()
+		for s, rate in successors:
+			next_state = s.vec
+			if not tuple(next_state) in backward_pointers:
+				# print(f"State {next_state} has priority {priority}")
+				next_state_tuple = tuple(next_state)
+				# Only explore new states
+				pq.put(s)
 				backward_pointers[next_state_tuple] = [(rate / total_rate, curr_state)]
 			else:
 				backward_pointers[tuple(next_state)].append((rate / total_rate, curr_state))

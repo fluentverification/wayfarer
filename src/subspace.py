@@ -16,6 +16,7 @@ class Subspace:
 		basis_vectors = [t.vector for t in transitions]
 		A = np.matrix(basis_vectors[0].append(basis_vectors[1:]), axis=1)
 		self.P = A * (A.T * A) ** -1 * A.T
+		self.rank = np.linalg.rank(self.P)
 
 class State:
 	subspaces = None
@@ -71,12 +72,22 @@ class State:
 		that get us closer to the target.
 		'''
 		succ = []
+		# TODO: actually compute this rate using ALL transitions, not just the ones we use for successors
+		total_outgoing_rate = 0.0
 		subspace = State.subspaces[len(State.subspaces) - (self.index + 1)]
 		for t in subspace.transitions:
 			if t.enabled(self.vec)
 				next_state = State(self.vec + t.vec_as_mat)
-				succ.append(next_state)
-		return succ
+				rate = t.rate_finder(next_state.vec)
+				# Due to the cycle-free nature of the dependency graph, we
+				# can ignore successors with a higher distance if both the
+				# current state and successor have order 0 (are in the last subspace)
+				# Note: this only works if the last subspace has rank 1
+				if subspace.rank == 1 and self.order == 0 and \
+					next_state.epsilon[len(next_state.epsilon) - 1] > self.epsilon[len(self.epsilon) - 1]:
+					continue
+				succ.append((next_state, rate))
+		return succ, total_outgoing_rate
 
 	# Comparators. ONLY COMPARES THE ORDER AND THE LOWEST VALUE FOR EPSILON
 	def __gt__(self, other):
