@@ -6,88 +6,100 @@ else:
 	import cupy as np
 
 from distance import vass_distance
+from crn import *
+
+DONT_CARE = -1
 
 class Subspace:
-	def __init__(self, reactions, next_subspace):
-		self.reactions = reactions
-		self.next_subspace = next_subspace
+	def __init__(self, transitions):
+		self.transitions = transitions
+		basis_vectors = [t.vector for t in transitions]
+		A = np.matrix(basis_vectors[0].append(basis_vectors[1:]), axis=1)
+		self.P = A * (A.T * A) ** -1 * A.T
 
-class RVecLevel:
-	def __init__(self, vector, level, remaining_vecs=[]):
-		self.vector = vector
-		self.level  = level
-        A = np.matrix(vector.append(remaining_vecs, axis=1))
-        self.P =  A * (A.T * A) ** -1 * A
+class State:
+	subspaces = None
+	target = None
+	# A "mask" vector that gives us 1.0's in the species we care about and 0.0s in
+	# the species we don't
+	mask = None # (target > DONT_CARE).astype(float)
+	init = None
+	def __init__(self, vec):
+		'''
+		Constructor for a new State element. Members within the State class:
+		1. vec (type: np.matrix) : the actual vector representing the state values
+		for a particular state in the state space.
+		2. adj (type: np.matrix) : the ADJUSTED state. I.e., the state minus the
+		initial state.
+		3. order (type : int) : The number of subspaces we must pass through in order
+		to reach the smallest subspace.
+		4. epsilon (type list(int)) : The list of nonzero subspace distances, starting
+		with the largest and working towards the smallest
+		'''
+		self.vec = vec
+		self.adj = vec - State.init
+		self.__compute_order()
 
-# TODO: multiple paths to the target?
-# Maybe store projection matrices? P = A(A^T A)^-1 A
+	def __compute_order(self):
+		'''
+		Computes the order and epsilon vector of the state
+		'''
+		dist_to_target = self.norm(self.vec - State.target)
+		if dist_to_target == 0:
+			self.epsilon = [0.0]
+			self.order = -1
+			return 0
+		self.epsilon = [dist_to_target]
+		self.order = 0
+		for s in reversed(State.subspaces):
+			epsilon = self.norm(s.P * self.adj - self.adj)
+			if epsilon == 0:
+				return
+			self.epsilon.insert(0, epsilon)
+			self.order += 1
 
-class SubspacePriority:
-	# These two must be set prior to using
-	# ordered_reaction_vectors must be in order and must be at RVecLevel
-	ordered_reaction_vectors = []
-	boundary = None
-	def __init__(self, state):
-		self.__distance = vass_distance(state, SubspacePriority.boundary)
-		L = len(SubspacePriority.ordered_reaction_vectors) - 1
-		self.__subspace_distances = [np.infinity for _ in SubspacePriority.ordered_reaction_vectors]
-		for i in range(len(self.__subspace_distances)):
-			P = SubspacePriority.ordered_reaction_vectors[L - i]
-			dist = np.linalg.norm(s - P * s)
-			self.__subspace_distances[L - i] = dist
-			# Short circuits because we know the rest of the distances are 0
-			if dist == 0:
-				for j in range(L - i):
-					self.__subspace_distances[j] = 0.0
-				break
+	def norm(self, vec):
+		'''
+		Computes the norm of a vector, only accounting for species in the CRN that
+		aren't "Don't care" (value -1)
+		'''
+		return np.linalg.norm(np.multiply(vec, mask))
 
-	def __dist_to_subspace(self, state, P):
-		# project the state into the subspace, and then take the
-        # distance from the state to the projected state
-        # and then find the norm of that
-        dist_vect = state - P * state
-		return np.linalg.norm(dist_vect)
+	def successors(self):
+		'''
+		Only returns the successors using the vectors in the dependency graph
+		that get us closer to the target.
+		'''
+		succ = []
+		subspace = State.subspaces[len(State.subspaces) - (self.index + 1)]
+		for t in subspace.transitions:
+			if t.enabled(self.vec)
+				next_state = State(self.vec + t.vec_as_mat)
+				succ.append(next_state)
+		return succ
 
-	# Optimized NEQ with early termination
-	def __ne__(self, other):
-		if self.__distance != other.__distance:
-			return True
-		for i in range(len(self.__subspace_distances)):
-			if self.__subspace_distances != other.__subspace_distances:
-				return True
-		return False
-
-	def __eq__(self, other):
-		return not self != other
-
-	# We must implement at least one element from the groups
-	# of [<, >=] and [>, <=] to accurately allow short-circuiting
+	# Comparators. ONLY COMPARES THE ORDER AND THE LOWEST VALUE FOR EPSILON
 	def __gt__(self, other):
-		for i in range(len(self.__subspace_distances)):
-			if self.__subspace_distances > other.__subspace_distances:
-				return True
-		if self.__distance > other.__distance:
-			return True
-		return False
+		return self.order > other.order or self.epsilon[0] > other.epsilon[0]
 
-	def __ge__(self, other):
-		for i in range(len(self.__subspace_distances)):
-			if self.__subspace_distances >= other.__subspace_distances:
-				return True
-		if self.__distance >= other.__distance:
-			return True
-		return False
-
-	def __lt__(self, other)
-		return not self >= other
+	def __lt__(self, other):
+		return self.order < other.order or self.epsilon[0] < other.epsilon[0]
 
 	def __le__(self, other):
 		return not self > other
 
+	def __ge__(self, other):
+		return not self < other
 
-def create_pmatrixes_from_depgraph(root, A=None, Pmats=[]):
-	if A is None:
-		A = np.matrix(root.vec)
-	else:
-		A = A.copy()
-		A.
+	def __eq__(self, other):
+		'''
+		Weak equal means are we equally close to the next subspace.
+		Operator overloading done here because of priority queue, which
+		possibly may use `=` operator.
+		'''
+		return self.order == other.order or self.epsilon[0] == other.epsilon[0]
+
+	# Strong equality means we are the same state
+	def strong_equal(self, other):
+		return self.vec == other.vec
+
