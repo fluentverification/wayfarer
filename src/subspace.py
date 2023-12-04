@@ -16,12 +16,16 @@ DONT_CARE = -1
 
 class Subspace:
 	mask = None # (target > DONT_CARE).astype(float)
-	def __init__(self, transitions : Transition, excluded_transitions : list(Transition)):
+	def __init__(self, transitions : list(Transition), excluded_transitions : list(Transition)):
 		'''
 		Creates a subspace with a projection matrix and all that fun stuff
 		transitions : the transitions forming the basis of the subspace
 		excluded_transitions : all other transitions in the VASS
 		'''
+		Requires(Forall(int, lambda i : Implies(i > 0 && i < len(transitions), len(transitions[i].vector) == len(transitions[i - 1].vector))))
+		Requires(Forall(int, lambda i : Implies(i > 0 && i < len(excluded_transitions), len(excluded_transitions[i].vector) == len(excluded_transitions[i - 1].vector))))
+		Requires(len(transitions) >= 1 && len(excluded_transitions) >= 1)
+		Requires(len(transitions[0].vector) == len(excluded_transitions[0].vector))
 		self.transitions = transitions
 		self.excluded_transitions = excluded_transitions
 		basis_vectors = [t.vector for t in transitions]
