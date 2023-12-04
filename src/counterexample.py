@@ -2,6 +2,8 @@ from distance import *
 from crn import *
 from subspace import *
 
+from nagini_contracts.contracts import *
+
 import queue
 import random
 
@@ -124,6 +126,7 @@ def find_counterexamples_subsp(crn, number=1, print_when_done=False, include_flo
 	reaches[tuple(init_state)] = 1.0
 	pq.put((State(init_state)))
 	while (not pq.empty()) and num_counterexamples < number and not force_end_traceback:
+		Invariant(not pq.empty() or MustTerminate(num_counterexamples < number))
 		num_explored += 1
 		curr_state_data = pq.get()
 		curr_state = curr_state_data.vec
