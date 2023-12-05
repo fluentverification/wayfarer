@@ -1,13 +1,14 @@
 USE_CUDA=False
 VERIFY=True
 
-if not USE_CUDA:
-	import numpy as np
-else:
-	import cupy as np
+# if not USE_CUDA:
+import numpy as np
+# else:
+	# import cupy as np
 
 # if VERIFY:
 from nagini_contracts.contracts import *
+from typing import List
 
 from distance import vass_distance
 from crn import *
@@ -16,31 +17,33 @@ DONT_CARE = -1
 
 class Subspace:
 	mask = None # (target > DONT_CARE).astype(float)
-	def __init__(self, transitions : list(Transition), excluded_transitions : list(Transition)):
+	def __init__(self, transitions : list, excluded_transitions : list):
 		'''
 		Creates a subspace with a projection matrix and all that fun stuff
 		transitions : the transitions forming the basis of the subspace
 		excluded_transitions : all other transitions in the VASS
 		'''
-		Requires(Forall(int, lambda i : Implies(i > 0 && i < len(transitions), len(transitions[i].vector) == len(transitions[i - 1].vector))))
-		Requires(Forall(int, lambda i : Implies(i > 0 && i < len(excluded_transitions), len(excluded_transitions[i].vector) == len(excluded_transitions[i - 1].vector))))
-		Requires(len(transitions) >= 1 && len(excluded_transitions) >= 1)
-		Requires(len(transitions[0].vector) == len(excluded_transitions[0].vector))
+		# Requires(Forall(int, lambda i : Implies(i > 0 && i < len(transitions), len(transitions[i].vector) == len(transitions[i - 1].vector))))
+		# Requires(Forall(int, lambda i : Implies(i > 0 && i < len(excluded_transitions), len(excluded_transitions[i].vector) == len(excluded_transitions[i - 1].vector))))
+		# Requires(len(transitions) >= 1 && len(excluded_transitions) >= 1)
+		# Requires(len(transitions[0].vector) == len(excluded_transitions[0].vector))
 		self.transitions = transitions
 		self.excluded_transitions = excluded_transitions
 		basis_vectors = [t.vector for t in transitions]
-		A = np.matrix(basis_vectors[0].append(basis_vectors[1:]), axis=1)
+		# TODO: make sure we're appending to the right axis
+		A = np.matrix(basis_vectors[0].append(basis_vectors[1:]))
 		self.P = A * (A.T * A) ** -1 * A.T
-		self.rank = np.linalg.rank(self.P)
+		self.rank = np.linalg.matrix_rank(self.P)
 
 	# @Pure
-	def contains(self, other : Subspace, test_vec : np.matrix = State.init) -> bool:
+	def contains(self, other : Subspace, test_vec : np.matrix) -> bool:
 		# Check if contains
+		Requires(type(State.init) == np.matrix)
 		Requires(len(test_vec) == len(Subspace.mask))
 		Ensures(Implies(Result(), self.dist(test_vec) >= other.dist(test_vec)))
 		if self.rank < other.rank:
 			return False
-		return np.linalg.rank(np.block(self.P, other.P)) == self.rank
+		return np.linalg.matrix_rank(np.block([self.P, other.P])) == self.rank
 
 	# @Pure
 	def norm(self, vec : np.matrix) -> float:
@@ -48,24 +51,24 @@ class Subspace:
 		Computes the norm of a vector, only accounting for species in the CRN that
 		aren't "Don't care" (value -1)
 		'''
-		Requires(len(vec) == len(mask))
+		Requires(len(vec) == len(Subspace.mask))
 		Ensures(Result() >= 0.0)
-		return np.linalg.norm(np.multiply(vec, mask))
+		return float(np.linalg.norm(np.multiply(vec, Subspace.mask)))
 
 	@Pure
 	def dist(self, vec) -> float:
-		Requires(len(vec) == len(mask))
+		Requires(len(vec) == len(Subspace.mask))
 		Ensures(Result() >= 0.0)
-		return self.norm(s.P * vec - vec)
+		return self.norm(self.P * vec - vec)
 
 
 class State:
-	subspaces = None
-	target = None
+	subspaces : List[Subspace] = []
+	target : np.matrix = None
 	# A "mask" vector that gives us 1.0's in the species we care about and 0.0s in
 	# the species we don't
 
-	init = None
+	init : np.matrix = None
 	def __init__(self, vec : np.matrix):
 		'''
 		Constructor for a new State element. Members within the State class:
@@ -78,28 +81,30 @@ class State:
 		4. epsilon (type list(int)) : The list of nonzero subspace distances, starting
 		with the largest and working towards the smallest
 		'''
-		Requires(type(State.subspaces) == list(Subspace))
-		Requires(
-			Forall(int, lambda i : (Implies(i > 0 and i < len(State.subspaces),
-			State.subspaces[i].contains[State.subspaces[i - 1]))))
+		Requires(type(State.init) == np.matrix)
+		Requires(type(State.target) == np.matrix)
+		Requires(type(State.subspaces) == List[Subspace])
+		# Requires(Forall(int, lambda i : Implies(i > 0 and i < len(State.subspaces), State.subspaces[i].contains(State.subspaces[i - 1], State.init))))
 		Ensures(self.order >= -1)
-		Ensures(len(self.epsilon) == len(subspaces) + 1)
+		Ensures(len(self.epsilon) == len(State.subspaces) + 1)
 		self.vec = vec
 		self.adj = vec - State.init
-		self.order = None
+		self.order : int = 0
 		self.__compute_order()
 
 	def __compute_order(self):
 		'''
 		Computes the order and epsilon vector of the state
 		'''
+		Requires(type(State.init) == np.matrix)
+		Requires(type(State.target) == np.matrix)
 		Ensures(type(self.order) == int and self.order >= -1)
 		Ensures(type(self.epsilon == list[float]))
 		Ensures(len(self.epsilon) >= 1)
 		Ensures(Forall(int, lambda i : (Implies(i > 0 and i < len(State.subspaces), self.epsilon[i] >= self.epsilon[i - 1]))))
 		dist_to_target = State.subspaces[0].norm(self.vec - State.target)
 		if dist_to_target == 0.0:
-			self.epsilon = [0.0]
+			self.epsilon : list = [0.0]
 			self.order = -1
 			return
 		self.epsilon = [dist_to_target]
@@ -111,14 +116,14 @@ class State:
 			self.epsilon.insert(0, epsilon)
 			self.order += 1
 
-
-
 	# @Pure
-	def successors(self) -> (list, float):
+	def successors(self) -> tuple:
 		'''
 		Only returns the successors using the vectors in the dependency graph
 		that get us closer to the target.
 		'''
+		Requires(type(State.init) == np.matrix)
+		Requires(type(State.target) == np.matrix)
 		Ensures(type(Result()) == tuple)
 		Ensures(len(Result()) == 2)
 		Ensures(type(Result()[0]) == list)
@@ -126,9 +131,9 @@ class State:
 		Ensures(Result()[1] >= 0.0)
 		succ = []
 		total_outgoing_rate = 0.0
-		subspace = State.subspaces[len(State.subspaces) - (self.index + 1)]
+		subspace = State.subspaces[len(State.subspaces) - (self.order + 1)]
 		for t in subspace.transitions:
-			if t.enabled(self.vec)
+			if t.enabled(self.vec):
 				next_state = State(self.vec)
 				rate = t.rate_finder(next_state.vec)
 				total_outgoing_rate += rate
