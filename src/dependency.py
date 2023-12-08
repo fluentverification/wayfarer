@@ -47,14 +47,20 @@ class Reaction:
 		line_elems = line.replace("\n", "").split("\n")
 		self.name = line_elems
 		sep_idx = line.index(">")
+		# ===============================
+		# actual names of species
 		self.in_species = line[1:sep_idx]
 		self.out_species = line[sep_idx + 1:len(line) - 1]
+		# ===============================
 		for spec in self.out_species:
 			if not spec in self.in_species:
 				dep_graph.declare_producer(self, spec)
 		for spec in self.in_species:
 			if not spec in self.out_species:
 				dep_graph.declare_consumer(self, spec)
+
+	def __str__(self):
+		return self.name
 
 class DepGraph:
 	'''
@@ -70,11 +76,24 @@ class DepGraph:
 		self.reaction_levels = []
 		self.species_names = species_names
 		self.root = []
+		self.mask = np.matrix([1.0 for _ in range(len(init_state))]).T
 		# Creates the reactions
 		for reaction in reactions:
 			r = Reaction(reaction, self)
 			self.reactions.append(r)
-		species_idx = 0
+		self.graph_root = self.create_graph(desired_values, init_state)
+
+	def __init__(self, ragtimer_lines):
+		self.producers = {}
+		self.consumers = {}
+		self.reaction_levels = []
+		self.root = []
+		self.species_names = [spec_name.split() for spec_name in lines[0].split("\t")]
+		self.reactions = [Reaction(line, self) for line in ragtimer_lines[3:]]
+		# We want values of zero when we find a -1 and a value of 1 for all others
+		self.mask = np.matrix([int(int(val.strip()) != -1) for val in ragtimer_lines[2].split("\t")]).T
+		desired_values = np.matrix([int(val.strip) for val in ragtimer_lines[2].split("\t")]).T
+		init_state = np.matrix([int(val) for val in ragtimer_lines[1].split("\t")]).T
 		self.graph_root = self.create_graph(desired_values, init_state)
 
 	def create_graph(self, desired_values, state, level = 0):
@@ -82,8 +101,9 @@ class DepGraph:
 		Recursive function that creates the graph
 		'''
 		# Decreases the values in the change vector
+		species_idx = 0
 		successors = []
-		change = desired_values - state
+		change = np.multiply(desired_values - state, self.mask)
 		# If c is all zeros, we don't recurse any further
 		for c in change:
 			species = species_names[species_idx]
@@ -112,7 +132,7 @@ class DepGraph:
 			species_idx += 1
 		return successors
 
-	def declare_reaction_at_level(self, reaction, level);
+	def declare_reaction_at_level(self, reaction, level):
 		'''
 		Declares the reaction at a specific level in the graph (for easy parsing later without having to
 		traverse the actual graph)
@@ -138,3 +158,17 @@ class DepGraph:
 			self.consumers[species] = [reaction]
 		else:
 			self.consumers[species].append(reaction)
+
+	def __str__(self):
+		'''
+		Produces a string representation of the graph
+		'''
+		s = f"Dependency Graph:\nTotal Reactions: {len(self.reactions)}\n"
+		s = f"{s}Producing Reactions: {len(self.producers)}\nConsuming Reactions: {len(self.consumers)}\n"
+		for lev_idx in range(len(self.reaction_levels)):
+			level = self.reaction_levels[lev_idx]
+			s = f"{s}Level {level_idx}:"
+			for reaction in level:
+				s = f"{s} {reaction}"
+			s = f"{s}\n"
+		return s

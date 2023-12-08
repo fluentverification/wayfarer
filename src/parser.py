@@ -1,5 +1,6 @@
 from crn import *
 from distance import Bound, BoundTypes
+from dependency import *
 
 import sys
 
@@ -63,3 +64,9 @@ def parse_ragtimer(filename):
 		boundary = [create_bound(bound_val) for bound_val in bound_vals]
 		transitions = [create_transition(line, species_idxes) for line in lines[3:]]
 		return Crn(transitions, boundary, init_state)
+
+def parse_dependency_ragtimer(filename):
+	with open(filename, 'r') as rag:
+		lines = rag.readlines()
+		assert(len(lines) >= 4)
+		return DepGraph(lines)
