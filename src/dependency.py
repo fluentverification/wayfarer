@@ -106,51 +106,80 @@ class DepGraph:
 		self.mask = np.matrix([int(int(val.strip()) != -1) for val in ragtimer_lines[2].split("\t")]).T
 		desired_values = np.matrix([int(val.strip()) for val in ragtimer_lines[2].split("\t")]).T
 		init_state = np.matrix([int(val) for val in ragtimer_lines[1].split("\t")]).T
-		self.graph_root = self.create_graph(desired_values, init_state)
+		change = np.multiply(desired_values - init_state, self.mask)
+		self.visited_changes = {}
+		self.used_reactions = {}
+		self.graph_root = self.create_graph(change)
 
-	def create_graph(self, desired_values, state, level = 0, last_change=None, cur_mask=self.mask):
+	def create_graph(self, change, level = 0):
 		'''
 		Recursive function that creates the graph
 		'''
 		# Decreases the values in the change vector
 		successors = []
-		change = np.multiply(desired_values - state, cur_mask)
-		if last_change is not None and (change == last_change).all():
-			print("Warning: returned because no change detected!")
+		hashable_change = tuple([float(f) for f in change])
+		print(hashable_change)
+		if hashable_change in self.visited_changes:
 			return
-		print(change.T)
+		self.visited_changes[hashable_change] = True
+		# Set each reaction as visited
+		species_idx = 0
+		allowed_reactions = []
+		for c in change:
+			species = self.species_names[species_idx]
+			if c > 0:
+				spec_producers = self.producers[species]
+				for producer in spec_producers:
+					if not producer.name in self.used_reactions:
+						allowed_reactions.append(producer.name)
+					self.used_reactions[producer.name] = True
+			if c < 0:
+				spec_consumers = self.consumers[species]
+				for consumer in spec_consumers:
+					if not consumer.name in self.used_reactions:
+						allowed_reactions.append(consumer.name)
+					self.used_reactions[consumer.name] = True
+			species_idx += 1
+		# Actually visit new ones
 		species_idx = 0
 		# If c is all zeros, we don't recurse any further
 		for c in change:
 			species = self.species_names[species_idx]
 			# print(species)
 			if c > 0:
-				# TODO: create a new mask where the current index is zero and the producer indecies are one
+				# TODO: create a new mask where the current index is zero and the (current) producer index is one
 				# We need a producer reaction
 				# print(self.producers)
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
-					new_state = state.copy()
-					new_state[species_idx] = 0
+					if producer.name in self.used_reactions and not producer.name in allowed_reactions:
+						continue
+					producer_idxs = [self.species_names.index(producer_species) for producer_species in producer.in_species]
+					new_change = np.matrix([float(i in producer_idxs) for i in range(len(self.mask))]).T
 					count = abs(c)
 					self.declare_reaction_at_level(producer, level)
 					# recurse down until satisfied
-					next_reactions = self.create_graph(desired_values, new_state, level + 1, change)
+					next_reactions = self.create_graph(new_change, level + 1)
 					successors.append(Node(producer, next_reactions, level + 1, count))
 			elif c < 0:
 				# We need a consumer reaction
 				# print(self.consumers)
-				# TODO: create a new mask where the current index is zero and the consumer indecies are one
+				new_mask = cur_mask.copy()
+				new_mask[species_idx] = 0.0
 				spec_consumers = self.consumers[species]
+
 				for consumer in spec_consumers:
-					new_state = state.copy()
-					new_state[species_idx] = 0
+					if consumer.name in self.used_reactions and not consumer.name in allowed_reactions:
+						continue
+					consumer_idxs = [self.species_names.index(consumer_species) for consumer_species in consumer.in_species]
+					new_change = np.matrix([0.0 - float(i in consumer_idxs) for i in range(len(self.mask))]).T
 					count = abs(c)
 					self.declare_reaction_at_level(consumer, level)
-					next_reactions = self.create_graph(desired_values, new_state, level + 1, change)
+					next_reactions = self.create_graph(new_change, level + 1)
 					# recurse down until satisfied
 					successors.append(Node(consumer, next_reactions, level + 1, count))
 			species_idx += 1
+
 		return successors
 
 	def declare_reaction_at_level(self, reaction, level):
