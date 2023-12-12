@@ -35,7 +35,10 @@ class Subspace:
 		# TODO: make sure we're appending to the right axis
 		A = np.column_stack(basis_vectors) # np.matrix(basis_vectors[0].append(basis_vectors[1:], axis=1))
 		print(A)
-		self.P = A * (A.T * A) ** -1 * A.T
+		# Use the pseudoinverse since with rectangular matrices,
+		# A.T * A is not guaranteed to be invertible. This SHOULD
+		# still produce a valid projection matrix
+		self.P = A * np.linalg.pinv(A.T * A) * A.T
 		self.rank = np.linalg.matrix_rank(self.P)
 
 	# @Pure
