@@ -50,7 +50,7 @@ class Reaction:
 		A constructor which parses a RAGTIMER line
 		'''
 		line_elems = line.replace("\n", "").split("\t")
-		print(line_elems)
+		# print(line_elems)
 		self.name = line_elems[0]
 		sep_idx = line_elems.index(">")
 		# ===============================
@@ -58,11 +58,11 @@ class Reaction:
 		self.in_species = line_elems[1:sep_idx]
 		if "0" in self.in_species:
 			self.in_species.remove("0")
-		print("in", self.in_species)
+		# print("in", self.in_species)
 		self.out_species = line_elems[sep_idx + 1:len(line_elems) - 1]
 		if "0" in self.out_species:
 			self.out_species.remove("0")
-		print("out", self.out_species)
+		# print("out", self.out_species)
 		# ===============================
 		for spec in self.out_species:
 			if not spec in self.in_species:
@@ -134,7 +134,7 @@ class DepGraph:
 		# Decreases the values in the change vector
 		successors = []
 		hashable_change = tuple([float(f) for f in change])
-		print(hashable_change)
+		# print(hashable_change)
 		if hashable_change in self.visited_changes:
 			return
 		self.visited_changes[hashable_change] = True
@@ -213,7 +213,7 @@ class DepGraph:
 		'''
 		Declares a reaction as a producer (called by the reaction's constructor)
 		'''
-		print(f"Declaring {reaction} as producer of {species}")
+		# print(f"Declaring {reaction} as producer of {species}")
 		if not species in self.producers:
 			self.producers[species] = [reaction]
 		else:
@@ -223,7 +223,7 @@ class DepGraph:
 		'''
 		Declares a reaction as a consumer (called by the reaction's constructor)
 		'''
-		print(f"Declaring {reaction} as consumer of {species}")
+		# print(f"Declaring {reaction} as consumer of {species}")
 		if not species in self.consumers:
 			self.consumers[species] = [reaction]
 		else:

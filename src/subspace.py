@@ -34,7 +34,7 @@ class Subspace:
 		# print(basis_vectors[0])
 		# TODO: make sure we're appending to the right axis
 		A = np.column_stack(basis_vectors) # np.matrix(basis_vectors[0].append(basis_vectors[1:], axis=1))
-		print(A)
+		# print(A)
 		# Use the pseudoinverse since with rectangular matrices,
 		# A.T * A is not guaranteed to be invertible. This SHOULD
 		# still produce a valid projection matrix
