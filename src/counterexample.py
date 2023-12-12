@@ -114,8 +114,9 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 		print(f"Explored {num_explored} states")
 		print_counterexamples()
 
-def find_counterexamples_subsp(crn, number=1, print_when_done=False, include_flow_angle=False):
+def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 	reset()
+	State.initialize_static_vars(crn, dep)
 	global DESIRED_NUMBER_COUNTEREXAMPLES
 	global backward_pointers
 	global num_counterexamples

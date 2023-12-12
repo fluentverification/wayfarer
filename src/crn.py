@@ -13,6 +13,9 @@ class Bound:
 		self.bound = bound
 		self.bound_type = bound_type
 
+	def to_num(self):
+		return -1 if self.bound_type == BoundTypes.DONT_CARE else self.bound
+
 class Transition:
 	# vector      #: np.vector
 	# enabled     #: lambda
@@ -53,7 +56,7 @@ class Crn:
 
 	def prune_transitions(self):
 		'''
-Unused: prunes transitions
+	Unused: prunes transitions
 		'''
 		for i in range(len(self.boundary)):
 			bound = self.boundary[i]
@@ -62,7 +65,7 @@ Unused: prunes transitions
 
 	def __prune_transitions_at_index(self, index):
 		'''
-Unused
+	Unused
 		'''
 		for transition in self.transitions:
 			can_eliminate = True

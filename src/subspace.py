@@ -8,7 +8,7 @@ import numpy as np
 
 # if VERIFY:
 # from nagini_contracts.contracts import *
-from typing import List
+# from typing import List
 
 from distance import vass_distance
 from crn import *
@@ -69,15 +69,17 @@ class Subspace:
 
 
 class State:
-	subspaces : List[Subspace] = []
+	subspaces : list = []
 	target : np.matrix = None
 	# A "mask" vector that gives us 1.0's in the species we care about and 0.0s in
 	# the species we don't
 
 	init : np.matrix = None
 	# @staticmethod
-	def initialize_static_vars(filename):
-		pass # TODO
+	def initialize_static_vars(crn, dep):
+		State.subspaces = dep.create_subspaces(crn)
+		State.init = np.matrix(crn.init_state).T
+		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
 
 	def __init__(self, vec):
 		'''
