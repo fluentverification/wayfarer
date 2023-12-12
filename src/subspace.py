@@ -17,6 +17,7 @@ DONT_CARE = -1
 
 class Subspace:
 	mask = None # (target > DONT_CARE).astype(float)
+	# Type of elements in transitions: crn.Transition
 	def __init__(self, transitions : list, excluded_transitions : list):
 		'''
 		Creates a subspace with a projection matrix and all that fun stuff

@@ -17,12 +17,13 @@ class Transition:
 	# vector      #: np.vector
 	# enabled     #: lambda
 	# rate_finder #: lambda
-	def __init__(self, vector, enabled, rate_finder):
+	def __init__(self, vector, enabled, rate_finder, name=None):
 		self.vector = np.array(vector)
 		self.vec_as_mat = np.matrix(vector).T
 		self.enabled_lambda = enabled
 		self.rate_finder = rate_finder
 		self.can_eliminate = False
+		self.name = name
 
 	def enabled(self, state):
 		return self.enabled_lambda(state)
@@ -42,6 +43,13 @@ class Crn:
 
 	def add_transition(self, transition : Transition):
 		self.transitions.append(transition)
+
+	def find_transition_by_name(self, name):
+		for t in self.transitions:
+			if t.name == name:
+				return t
+		print(f"[WARNING] transition by name '{name}' not found!")
+		return None
 
 	def prune_transitions(self):
 		'''

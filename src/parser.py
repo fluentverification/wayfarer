@@ -30,6 +30,7 @@ def create_bound(bound_text):
 def create_transition(transition_line, species_idxes):
 	transition_info = transition_line.split("\t")
 	sep_idx = transition_info.index(">")
+	tname = transition_info[0]
 	reactants = transition_info[1:sep_idx]
 	products = transition_info[sep_idx + 1:len(transition_info) - 1]
 	rate = float(transition_info[len(transition_info) - 1])
@@ -47,9 +48,9 @@ def create_transition(transition_line, species_idxes):
 			break
 		transition_vector[species_idxes[product]] = 1
 	if always_enabled:
-		return Transition(transition_vector, lambda state : True, lambda state : rate)
+		return Transition(transition_vector, lambda state : True, lambda state : rate, tname)
 	reactant_idxes = [species_idxes[reactant] for reactant in reactants]
-	return Transition(transition_vector, lambda state : np.all([state[i] > 0 for i in reactant_idxes]), lambda state : rate)
+	return Transition(transition_vector, lambda state : np.all([state[i] > 0 for i in reactant_idxes]), lambda state : rate, tname)
 
 def parse_ragtimer(filename):
 	with open(filename, 'r') as rag:
@@ -69,4 +70,4 @@ def parse_dependency_ragtimer(filename):
 	with open(filename, 'r') as rag:
 		lines = rag.readlines()
 		assert(len(lines) >= 4)
-		return DepGraph(lines)
+		return DepGraph(lines), parse_ragtimer(filename)

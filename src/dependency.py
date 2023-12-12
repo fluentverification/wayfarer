@@ -2,6 +2,9 @@
 
 import numpy as np
 
+from crn import *
+from subspace import *
+
 class Node:
 	'''
 	A Node in the dependency graph
@@ -74,6 +77,17 @@ class Reaction:
 	def __str__(self):
 		return str(self.name)
 
+	def vec(self, species_names):
+		v = []
+		for n in species_names:
+			if n in self.in_species:
+				v.append(-1.0)
+			elif n in self.out_species:
+				v.append(1.0)
+			else:
+				v.append(0.0)
+		return np.matrix(v).T
+
 class DepGraph:
 	'''
 	A basic graph class for the entire dependency graph
@@ -109,6 +123,8 @@ class DepGraph:
 		change = np.multiply(desired_values - init_state, self.mask)
 		self.visited_changes = {}
 		self.used_reactions = {}
+		self.used_species = {}
+		# self.produced_species = {}
 		self.graph_root = self.create_graph(change)
 
 	def create_graph(self, change, level = 0):
@@ -128,6 +144,7 @@ class DepGraph:
 		for c in change:
 			species = self.species_names[species_idx]
 			if c > 0:
+				self.used_species[species] = True
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
 					if not producer.name in self.used_reactions:
@@ -135,6 +152,7 @@ class DepGraph:
 					self.used_reactions[producer.name] = True
 			if c < 0:
 				spec_consumers = self.consumers[species]
+				self.used_species[species] = True
 				for consumer in spec_consumers:
 					if not consumer.name in self.used_reactions:
 						allowed_reactions.append(consumer.name)
@@ -154,7 +172,7 @@ class DepGraph:
 				for producer in spec_producers:
 					if producer.name in self.used_reactions and not producer.name in allowed_reactions:
 						continue
-					producer_idxs = [self.species_names.index(producer_species) for producer_species in producer.in_species]
+					producer_idxs = [self.species_names.index(producer_species) for producer_species in producer.in_species if producer_species not in self.used_species]
 					new_change = np.matrix([float(i in producer_idxs) for i in range(len(self.mask))]).T
 					count = abs(c)
 					self.declare_reaction_at_level(producer, level)
@@ -171,7 +189,7 @@ class DepGraph:
 				for consumer in spec_consumers:
 					if consumer.name in self.used_reactions and not consumer.name in allowed_reactions:
 						continue
-					consumer_idxs = [self.species_names.index(consumer_species) for consumer_species in consumer.in_species]
+					consumer_idxs = [self.species_names.index(consumer_species) for consumer_species in consumer.in_species if consumer_species not in self.used_species]
 					new_change = np.matrix([0.0 - float(i in consumer_idxs) for i in range(len(self.mask))]).T
 					count = abs(c)
 					self.declare_reaction_at_level(consumer, level)
@@ -224,3 +242,23 @@ class DepGraph:
 				s = f"{s} {reaction}"
 			s = f"{s}\n"
 		return s
+
+	def create_subspaces(self, crn):
+		available_reactions = []
+		indecies = []
+		for lev_idx in range(len(self.reaction_levels)):
+			level = self.reaction_levels[lev_idx]
+			for reaction in level:
+				transition = crn.find_transition_by_name(reaction.name)
+				available_reactions.append(transition)
+			indecies.append(len(available_reactions) - 1)
+		# The last index is unnecessary as it is just the last available index
+		indecies.pop()
+		subspaces = []
+		for i in indecies:
+			# TODO: should be i or i - 1
+			used_transitions = available_reactions[:i]
+			unused_transitions = available_reactions[i:]
+			subspace = Subspace(used_transitions, unused_transitions)
+			subspaces.append(subspace)
+		return subspaces
