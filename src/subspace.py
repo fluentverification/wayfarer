@@ -80,6 +80,7 @@ class State:
 		State.subspaces = dep.create_subspaces(crn)
 		State.init = np.matrix(crn.init_state).T
 		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
+		Subspace.mask = np.matrix([b.to_mask() for b in crn.boundary]).T
 
 	def __init__(self, vec):
 		'''
@@ -125,7 +126,7 @@ class State:
 			ep = s.dist(self.adj)
 			if ep == 0:
 				return
-			self.epsilon.insert(0, epsilon)
+			self.epsilon.insert(0, ep)
 			self.order += 1
 
 	# @Pure

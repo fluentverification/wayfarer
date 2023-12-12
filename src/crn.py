@@ -16,6 +16,9 @@ class Bound:
 	def to_num(self):
 		return -1 if self.bound_type == BoundTypes.DONT_CARE else self.bound
 
+	def to_mask(self):
+		return 0.0 if self.bound_type == BoundTypes.DONT_CARE else 1.0
+
 class Transition:
 	# vector      #: np.vector
 	# enabled     #: lambda

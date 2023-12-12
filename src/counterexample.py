@@ -123,8 +123,10 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 	global force_end_traceback
 	DESIRED_NUMBER_COUNTEREXAMPLES = number
 	# Min queue
+	num_explored = 0
 	pq = queue.PriorityQueue()
 	curr_state = None
+	init_state = crn.init_state
 	reaches[tuple(init_state)] = 1.0
 	pq.put((State(init_state)))
 	while (not pq.empty()) and num_counterexamples < number and not force_end_traceback:
