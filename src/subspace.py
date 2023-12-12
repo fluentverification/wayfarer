@@ -18,7 +18,7 @@ DONT_CARE = -1
 class Subspace:
 	mask = None # (target > DONT_CARE).astype(float)
 	# Type of elements in transitions: crn.Transition
-	def __init__(self, transitions : list, excluded_transitions : list):
+	def __init__(self, transitions, excluded_transitions):
 		'''
 		Creates a subspace with a projection matrix and all that fun stuff
 		transitions : the transitions forming the basis of the subspace
@@ -30,14 +30,16 @@ class Subspace:
 		# Requires(len(transitions[0].vector) == len(excluded_transitions[0].vector))
 		self.transitions = transitions
 		self.excluded_transitions = excluded_transitions
-		basis_vectors = [t.vector for t in transitions]
+		basis_vectors = [np.matrix(t.vector).T for t in transitions]
+		# print(basis_vectors[0])
 		# TODO: make sure we're appending to the right axis
-		A = np.matrix(basis_vectors[0].append(basis_vectors[1:]))
+		A = np.column_stack(basis_vectors) # np.matrix(basis_vectors[0].append(basis_vectors[1:], axis=1))
+		print(A)
 		self.P = A * (A.T * A) ** -1 * A.T
 		self.rank = np.linalg.matrix_rank(self.P)
 
 	# @Pure
-	def contains(self, other : Subspace, test_vec : np.matrix) -> bool:
+	def contains(self, other, test_vec): # -> bool:
 		# Check if contains
 		# Requires(type(State.init) == np.matrix)
 		# Requires(len(test_vec) == len(Subspace.mask))
@@ -47,7 +49,7 @@ class Subspace:
 		return np.linalg.matrix_rank(np.block([self.P, other.P])) == self.rank
 
 	# @Pure
-	def norm(self, vec : np.matrix) -> float:
+	def norm(self, vec): # -> float:
 		'''
 		Computes the norm of a vector, only accounting for species in the CRN that
 		aren't "Don't care" (value -1)
@@ -57,7 +59,7 @@ class Subspace:
 		return float(np.linalg.norm(np.multiply(vec, Subspace.mask)))
 
 	# @Pure
-	def dist(self, vec) -> float:
+	def dist(self, vec): # -> float:
 		# Requires(len(vec) == len(Subspace.mask))
 		# Ensures(Result() >= 0.0)
 		return self.norm(self.P * vec - vec)
@@ -70,11 +72,11 @@ class State:
 	# the species we don't
 
 	init : np.matrix = None
-	@staticmethod
+	# @staticmethod
 	def initialize_static_vars(filename):
 		pass # TODO
 
-	def __init__(self, vec : np.matrix):
+	def __init__(self, vec):
 		'''
 		Constructor for a new State element. Members within the State class:
 		1. vec (type: np.matrix) : the actual vector representing the state values
@@ -122,7 +124,7 @@ class State:
 			self.order += 1
 
 	# @Pure
-	def successors(self) -> tuple:
+	def successors(self): # -> tuple:
 		'''
 		Only returns the successors using the vectors in the dependency graph
 		that get us closer to the target.

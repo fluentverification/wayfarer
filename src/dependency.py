@@ -253,12 +253,13 @@ class DepGraph:
 				available_reactions.append(transition)
 			indecies.append(len(available_reactions) - 1)
 		# The last index is unnecessary as it is just the last available index
-		indecies.pop()
+		# indecies.pop()
 		subspaces = []
+		# print(indecies)
 		for i in indecies:
-			# TODO: should be i or i - 1
-			used_transitions = available_reactions[:i]
-			unused_transitions = available_reactions[i:]
+			# TODO: should be i or i + 1
+			used_transitions = available_reactions[:i + 1]
+			unused_transitions = available_reactions[i + 1:]
 			subspace = Subspace(used_transitions, unused_transitions)
 			subspaces.append(subspace)
 		return subspaces
