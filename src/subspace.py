@@ -147,8 +147,11 @@ class State:
 		subspace = State.subspaces[len(State.subspaces) - (self.order + 1)]
 		for t in subspace.transitions:
 			if t.enabled(self.vec):
-				next_state = State(self.vec)
+				# print("Update", t.vector)
+				next_state = State(self.vec + t.vector)
 				rate = t.rate_finder(next_state.vec)
+				# print("vec", self.vec)
+				# print("new vec", next_state.vec)
 				total_outgoing_rate += rate
 				# Due to the cycle-free nature of the dependency graph, we
 				# can ignore successors with a higher distance if both the

@@ -131,9 +131,11 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 	pq.put((State(init_state)))
 	while (not pq.empty()) and num_counterexamples < number and not force_end_traceback:
 		# Invariant(not pq.empty() or MustTerminate(num_counterexamples < number))
+		# print(pq.qsize())
 		num_explored += 1
 		curr_state_data = pq.get()
 		curr_state = curr_state_data.vec
+		# print(curr_state
 		if curr_state_data.order == -1:
 			print(f"Found satisfying state {curr_state}")
 			force_end_traceback = False
