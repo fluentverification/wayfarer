@@ -166,6 +166,7 @@ class State:
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)
 				total_outgoing_rate += rate
+		# print([s[0].vec for s in succ])
 		return succ, total_outgoing_rate
 
 	# Comparators. ONLY COMPARES THE ORDER AND THE LOWEST VALUE FOR EPSILON

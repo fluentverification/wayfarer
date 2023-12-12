@@ -52,6 +52,7 @@ class Reaction:
 		line_elems = line.replace("\n", "").split("\t")
 		# print(line_elems)
 		self.name = line_elems[0]
+		print(f"Creating reaction name {self.name}")
 		sep_idx = line_elems.index(">")
 		# ===============================
 		# actual names of species
@@ -62,14 +63,14 @@ class Reaction:
 		self.out_species = line_elems[sep_idx + 1:len(line_elems) - 1]
 		if "0" in self.out_species:
 			self.out_species.remove("0")
-		# print("out", self.out_species)
+		print("out", self.out_species)
 		# ===============================
 		for spec in self.out_species:
 			if not spec in self.in_species:
 				dep_graph.declare_producer(self, spec)
-			else:
-				self.out_species.remove(spec)
-				self.in_species.remove(spec)
+			# else:
+				# self.out_species.remove(spec)
+				# self.in_species.remove(spec)
 		for spec in self.in_species:
 			if not spec in self.out_species:
 				dep_graph.declare_consumer(self, spec)
@@ -145,14 +146,20 @@ class DepGraph:
 			species = self.species_names[species_idx]
 			if c > 0:
 				self.used_species[species] = True
+				if not species in self.producers:
+					print(f"Unable to continue this path to satisfiability! (This is not an error): produce {species}")
+					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
 					if not producer.name in self.used_reactions:
 						allowed_reactions.append(producer.name)
 					self.used_reactions[producer.name] = True
-			if c < 0:
-				spec_consumers = self.consumers[species]
+			elif c < 0:
 				self.used_species[species] = True
+				if not species in self.consumers:
+					print(f"Unable to continue this path to satisfiability! (This is not an error): consume {species}")
+					continue
+				spec_consumers = self.consumers[species]
 				for consumer in spec_consumers:
 					if not consumer.name in self.used_reactions:
 						allowed_reactions.append(consumer.name)
@@ -168,6 +175,8 @@ class DepGraph:
 				# TODO: create a new mask where the current index is zero and the (current) producer index is one
 				# We need a producer reaction
 				# print(self.producers)
+				if not species in self.producers:
+					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
 					if producer.name in self.used_reactions and not producer.name in allowed_reactions:
@@ -184,6 +193,8 @@ class DepGraph:
 				# print(self.consumers)
 				new_mask = cur_mask.copy()
 				new_mask[species_idx] = 0.0
+				if not species in self.consumers:
+					continue
 				spec_consumers = self.consumers[species]
 
 				for consumer in spec_consumers:
@@ -213,7 +224,7 @@ class DepGraph:
 		'''
 		Declares a reaction as a producer (called by the reaction's constructor)
 		'''
-		# print(f"Declaring {reaction} as producer of {species}")
+		print(f"Declaring {reaction} as producer of {species}")
 		if not species in self.producers:
 			self.producers[species] = [reaction]
 		else:
@@ -223,7 +234,7 @@ class DepGraph:
 		'''
 		Declares a reaction as a consumer (called by the reaction's constructor)
 		'''
-		# print(f"Declaring {reaction} as consumer of {species}")
+		print(f"Declaring {reaction} as consumer of {species}")
 		if not species in self.consumers:
 			self.consumers[species] = [reaction]
 		else:

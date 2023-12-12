@@ -54,6 +54,7 @@ Checks to see if a state satisfies (or is within) the boundary
 		# dist = species_distance(state[i], boundary[i].bound, boundary[i].bound_type)
 		# print(f"Distance = {dist}")
 		if not species_satisfies(state[i], boundary[i].bound, boundary[i].bound_type):# dist != 0:
+			# print(f"failed on index {i}: val {state[i]}, bound type: {boundary[i].bound_type}")
 			return False
 	return True
 

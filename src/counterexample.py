@@ -56,7 +56,7 @@ recursive algorithm to get SOME (not all) tracebacks to init state from current 
 			new_tail.append(state)
 			counterexamples.append((tail_probability * normalized_rate, new_tail))
 			num_counterexamples = len(counterexamples)
-			# print(f"Found counterexample! Now we have {len(counterexamples)}")
+			print(f"Found counterexample! Now we have {len(counterexamples)}")
 		else:
 			traceback(state, new_tail, tail_probability * normalized_rate)
 	# print(f"ERROR: found no counterexample in traceback!")
@@ -123,6 +123,7 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 	global force_end_traceback
 	DESIRED_NUMBER_COUNTEREXAMPLES = number
 	# Min queue
+	boundary = crn.boundary
 	num_explored = 0
 	pq = queue.PriorityQueue()
 	curr_state = None
@@ -135,11 +136,14 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 		num_explored += 1
 		curr_state_data = pq.get()
 		curr_state = curr_state_data.vec
-		# print(curr_state
-		if curr_state_data.order == -1:
-			print(f"Found satisfying state {curr_state}")
+		# print(curr_state, curr_state_data.order)
+		# print(f"\tEpsilon: {curr_state_data.epsilon}")
+		if satisfies(curr_state, boundary):
+			print(f"Found satisfying state {tuple(curr_state)}")
 			force_end_traceback = False
-			traceback(curr_state)
+			traceback(tuple(curr_state))
+		# else:
+			# print(f"{curr_state} does NOT satisfy")
 		successors, total_rate = curr_state_data.successors()
 		for s, rate in successors:
 			next_state = s.vec
@@ -148,9 +152,9 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 				next_state_tuple = tuple(next_state)
 				# Only explore new states
 				pq.put(s)
-				backward_pointers[next_state_tuple] = [(rate / total_rate, curr_state)]
+				backward_pointers[next_state_tuple] = [(rate / total_rate, tuple(curr_state))]
 			else:
-				backward_pointers[tuple(next_state)].append((rate / total_rate, curr_state))
+				backward_pointers[tuple(next_state)].append((rate / total_rate, tuple(curr_state)))
 	if print_when_done:
 		print(f"Explored {num_explored} states")
 		print_counterexamples()

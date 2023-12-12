@@ -23,9 +23,10 @@ def create_species_idxes(reactants):
 	return species_idxes
 
 def create_bound(bound_text):
-	if bound_text == "-1":
+	bound_int = int(bound_text)
+	if bound_int == -1:
 		return Bound(0, BoundTypes.DONT_CARE)
-	return Bound(int(bound_text), BoundTypes.EQUAL)
+	return Bound(bound_int, BoundTypes.EQUAL)
 
 def create_transition(transition_line, species_idxes):
 	transition_info = transition_line.split("\t")
@@ -41,12 +42,12 @@ def create_transition(transition_line, species_idxes):
 		if reactant == "0":
 			always_enabled = True
 			break
-		transition_vector[species_idxes[reactant]] = -1
+		transition_vector[species_idxes[reactant]] -= 1
 	for product in products:
 		if product == "0":
 			is_consumer = True
 			break
-		transition_vector[species_idxes[product]] = 1
+		transition_vector[species_idxes[product]] += 1
 	if always_enabled:
 		return Transition(transition_vector, lambda state : True, lambda state : rate, tname)
 	reactant_idxes = [species_idxes[reactant] for reactant in reactants]
