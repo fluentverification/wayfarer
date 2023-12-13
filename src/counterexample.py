@@ -134,6 +134,8 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 		# Invariant(not pq.empty() or MustTerminate(num_counterexamples < number))
 		# print(pq.qsize())
 		num_explored += 1
+		if num_explored % 20000 == 0:
+			print(f"Explored {num_explored} states")
 		curr_state_data = pq.get()
 		curr_state = curr_state_data.vec
 		# print(curr_state, curr_state_data.order)
