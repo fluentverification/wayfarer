@@ -89,7 +89,7 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 		# print(num_counterexamples)
 		num_explored += 1
 		curr_priority, curr_state = pq.get()
-		print(f"Got state {curr_state} at priority {curr_priority}")
+		# print(f"Got state {curr_state} at priority {curr_priority}")
 		if satisfies(curr_state, boundary):
 			print(f"Found satisfying state {curr_state} (explored {num_explored} states)")
 			force_end_traceback = False
@@ -145,8 +145,8 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 		# print("=============================================")
 		curr_state_data = pq.get()
 		curr_state = curr_state_data.vec
-		print(curr_state, curr_state_data.order)
-		print(f"\tEpsilon: {curr_state_data.epsilon}") # [len(curr_state_data.epsilon) - 1]}")
+		# print(curr_state, curr_state_data.order)
+		# print(f"\tEpsilon: {curr_state_data.epsilon}") # [len(curr_state_data.epsilon) - 1]}")
 		if satisfies(curr_state, boundary):
 			print(f"Found satisfying state {tuple(curr_state)}")
 			force_end_traceback = False
