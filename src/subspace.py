@@ -169,7 +169,7 @@ class State:
 		total_outgoing_rate = 0.0
 		subspace = State.subspaces[len(State.subspaces) - (self.order + 2)]
 		# print(f"Successors from subspace '{subspace}'")
-		update_vectors = subspace.get_update_vectors(State.crn)
+		update_vectors = subspace.get_update_vectors() # State.crn)
 		# print(f"Update vectors {[str(vec) for vec in update_vectors]}")
 		for t in update_vectors:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
