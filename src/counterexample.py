@@ -2,6 +2,8 @@ from distance import *
 from crn import *
 from subspace import *
 
+import sys
+
 # from numpy import
 
 # Nagini currently does not support numpy (or floats, or later versions of python)
@@ -9,6 +11,8 @@ from subspace import *
 
 import queue
 import random
+
+sys.setrecursionlimit(sys.getrecursionlimit() * 50)
 
 TRACEBACK_BOUND=10
 DESIRED_NUMBER_COUNTEREXAMPLES=2
