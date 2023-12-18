@@ -146,7 +146,7 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 		curr_state_data = pq.get()
 		curr_state = curr_state_data.vec
 		print(curr_state, curr_state_data.order)
-		print(f"\tEpsilon: {curr_state_data.epsilon[len(curr_state_data.epsilon) - 1]}")
+		print(f"\tEpsilon: {curr_state_data.epsilon}") # [len(curr_state_data.epsilon) - 1]}")
 		if satisfies(curr_state, boundary):
 			print(f"Found satisfying state {tuple(curr_state)}")
 			force_end_traceback = False

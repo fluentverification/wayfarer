@@ -205,15 +205,15 @@ class State:
 	def __gt__(self, other):
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
-		return self.epsilon[len(self.epsilon) - 1] > other.epsilon[len(other.epsilon) - 1]
-		# return self.order > other.order or (self.order == other.order and self.epsilon[0] > other.epsilon[0])
+		# return self.epsilon[len(self.epsilon) - 1] > other.epsilon[len(other.epsilon) - 1]
+		return self.order > other.order or (self.order == other.order and self.epsilon[0] > other.epsilon[0])
 
 	# @Pure
 	def __lt__(self, other):
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
-		return self.epsilon[len(self.epsilon) - 1] < other.epsilon[len(other.epsilon) - 1]
-		# return self.order < other.order or (self.order == other.order and self.epsilon[0] < other.epsilon[0])
+		# return self.epsilon[len(self.epsilon) - 1] < other.epsilon[len(other.epsilon) - 1]
+		return self.order < other.order or (self.order == other.order and self.epsilon[0] < other.epsilon[0])
 
 	# @Pure
 	def __le__(self, other):
@@ -236,8 +236,8 @@ class State:
 		'''
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
-		return self.epsilon[len(self.epsilon) - 1] == other.epsilon[len(other.epsilon) - 1]
-		# return self.order == other.order and self.epsilon[0] == other.epsilon[0]
+		# return self.epsilon[len(self.epsilon) - 1] == other.epsilon[len(other.epsilon) - 1]
+		return self.order == other.order and self.epsilon[0] == other.epsilon[0]
 
 	# Strong equality means we are the same state
 	# @Pure
