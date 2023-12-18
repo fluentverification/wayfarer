@@ -267,10 +267,14 @@ class DepGraph:
 		# indecies.pop()
 		subspaces = []
 		# print(indecies)
-		for i in indecies:
-			# TODO: should be i or i + 1
-			used_transitions = available_reactions[:i + 1]
-			unused_transitions = available_reactions[i + 1:]
-			subspace = Subspace(used_transitions, unused_transitions)
+		# Perhaps restrict the reactions only to the current level?
+		for i in range(len(indecies)):
+			idx = indecies[i]
+			last_idx = indecies[i - 1] if i > 1 else 0
+			# TODO: should be idx or idx + 1
+			used_transitions = available_reactions[:idx + 1]
+			unused_transitions = available_reactions[idx + 1:]
+			last_layer = available_reactions[last_idx + 1:idx + 1]
+			subspace = Subspace(used_transitions, unused_transitions, last_layer)
 			subspaces.append(subspace)
 		return subspaces

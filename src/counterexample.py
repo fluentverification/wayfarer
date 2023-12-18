@@ -2,6 +2,8 @@ from distance import *
 from crn import *
 from subspace import *
 
+from numpy import float128
+
 # Nagini currently does not support numpy (or floats, or later versions of python)
 # from nagini_contracts.contracts import *
 
@@ -45,12 +47,14 @@ recursive algorithm to get SOME (not all) tracebacks to init state from current 
 	# If our tail probability is too small to handle or is zero we shouldn't continue exploring
 	if tail_probability == 0.0:
 		# We've probably found all of the counterexamples we can
+		print("Found tail probability of zero. Stopping traceback")
 		force_end_traceback=True
 		return
 	# We can afford a copy of the tail on every call, since traceback is only called from
 	# satisfying states and works BACKWARDS
 	new_tail = tail.copy()
 	new_tail.append(c_state)
+	backward_pointers[c_state].sort(reverse=True)
 	for normalized_rate, state in backward_pointers[c_state]:
 		if not state in backward_pointers:
 			new_tail.append(state)
@@ -98,6 +102,8 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 		for rate, _ in transitions:
 			total_rate += rate
 		for rate, next_state in transitions:
+			if rate == 0.0:
+				continue
 			if not tuple(next_state) in backward_pointers:
 				# print(f"State {next_state} has priority {priority}")
 				next_state_tuple = tuple(next_state)
@@ -107,7 +113,7 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 				priority = vass_priority(next_state, boundary, crn, include_flow_angle=include_flow_angle) # , curr_reach)
 				# reaches[next_state_tuple] = curr_reach
 				pq.put((priority, next_state_tuple))
-				backward_pointers[next_state_tuple] = [(rate / total_rate, curr_state)]
+				backward_pointers[next_state_tuple] = [(float128(rate) / float128(total_rate), curr_state)]
 			else:
 				backward_pointers[tuple(next_state)].append((rate / total_rate, curr_state))
 	if print_when_done:
@@ -156,7 +162,7 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 				pq.put(s)
 				backward_pointers[next_state_tuple] = [(rate / total_rate, tuple(curr_state))]
 			else:
-				backward_pointers[tuple(next_state)].append((rate / total_rate, tuple(curr_state)))
+				backward_pointers[tuple(next_state)].append((float128(rate) / float128(total_rate), tuple(curr_state)))
 	if print_when_done:
 		print(f"Explored {num_explored} states")
 		print_counterexamples()

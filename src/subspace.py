@@ -18,7 +18,7 @@ DONT_CARE = -1
 class Subspace:
 	mask = None # (target > DONT_CARE).astype(float)
 	# Type of elements in transitions: crn.Transition
-	def __init__(self, transitions, excluded_transitions):
+	def __init__(self, transitions, excluded_transitions, last_layer = None):
 		'''
 		Creates a subspace with a projection matrix and all that fun stuff
 		transitions : the transitions forming the basis of the subspace
@@ -30,6 +30,7 @@ class Subspace:
 		# Requires(len(transitions[0].vector) == len(excluded_transitions[0].vector))
 		self.transitions = transitions
 		self.excluded_transitions = excluded_transitions
+		self.last_layer = last_layer
 		basis_vectors = [np.matrix(t.vector).T for t in transitions]
 		# print(basis_vectors[0])
 		# TODO: make sure we're appending to the right axis
@@ -40,6 +41,16 @@ class Subspace:
 		# still produce a valid projection matrix
 		self.P = A * np.linalg.pinv(A.T * A) * A.T
 		self.rank = np.linalg.matrix_rank(self.P)
+
+	def get_update_vectors(self):
+		'''
+		If we set the last layer to not none, we will
+		restrict the next fireable reactions to that layer
+		'''
+		if self.last_layer is not None:
+			return self.last_layer
+		else:
+			return self.transitions
 
 	# @Pure
 	def contains(self, other, test_vec): # -> bool:
@@ -69,6 +80,7 @@ class Subspace:
 
 
 class State:
+	# Stores in ASCENDING ORDER, i.e., S0 \in S1 \in S2 ...
 	subspaces : list = []
 	target : np.matrix = None
 	# A "mask" vector that gives us 1.0's in the species we care about and 0.0s in
@@ -81,6 +93,7 @@ class State:
 		State.init = np.matrix(crn.init_state).T
 		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
 		Subspace.mask = np.matrix([b.to_mask() for b in crn.boundary]).T
+		print(f"Dependency Graph: {dep}")
 
 	def __init__(self, vec):
 		'''
@@ -122,7 +135,7 @@ class State:
 			return
 		self.epsilon = [dist_to_target]
 		self.order = 0
-		for s in reversed(State.subspaces):
+		for s in State.subspaces:
 			ep = s.dist(self.adj)
 			if ep == 0:
 				return
@@ -145,7 +158,7 @@ class State:
 		succ = []
 		total_outgoing_rate = 0.0
 		subspace = State.subspaces[len(State.subspaces) - (self.order + 1)]
-		for t in subspace.transitions:
+		for t in subspace.get_update_vectors():
 			if t.enabled(self.vec):
 				# print("Update", t.vector)
 				next_state = State(self.vec + t.vector)
@@ -174,13 +187,13 @@ class State:
 	def __gt__(self, other):
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
-		return self.order > other.order or self.epsilon[0] > other.epsilon[0]
+		return self.order > other.order or (self.order == other.order and self.epsilon[0] > other.epsilon[0])
 
 	# @Pure
 	def __lt__(self, other):
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
-		return self.order < other.order or self.epsilon[0] < other.epsilon[0]
+		return self.order < other.order or (self.order == other.order and self.epsilon[0] < other.epsilon[0])
 
 	# @Pure
 	def __le__(self, other):
@@ -203,7 +216,7 @@ class State:
 		'''
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
-		return self.order == other.order or self.epsilon[0] == other.epsilon[0]
+		return self.order == other.order and self.epsilon[0] == other.epsilon[0]
 
 	# Strong equality means we are the same state
 	# @Pure
