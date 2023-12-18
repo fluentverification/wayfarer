@@ -34,6 +34,9 @@ class Transition:
 	def enabled(self, state):
 		return self.enabled_lambda(state)
 
+	def __str__(self):
+		return self.name
+
 class Crn:
 	def __init__(self, transitions=None, boundary=None, init_state=None, all_trans_always_enabled=False, all_rates_const=False):
 		self.boundary = boundary

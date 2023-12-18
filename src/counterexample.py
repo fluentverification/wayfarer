@@ -2,7 +2,7 @@ from distance import *
 from crn import *
 from subspace import *
 
-from numpy import float128
+# from numpy import
 
 # Nagini currently does not support numpy (or floats, or later versions of python)
 # from nagini_contracts.contracts import *
@@ -89,9 +89,9 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 		# print(num_counterexamples)
 		num_explored += 1
 		curr_priority, curr_state = pq.get()
-		# print(f"Got state {curr_state} at priority {curr_priority}")
+		print(f"Got state {curr_state} at priority {curr_priority}")
 		if satisfies(curr_state, boundary):
-			print(f"Found satisfying state {curr_state}")
+			print(f"Found satisfying state {curr_state} (explored {num_explored} states)")
 			force_end_traceback = False
 			traceback(curr_state)
 		# else:
@@ -113,9 +113,9 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 				priority = vass_priority(next_state, boundary, crn, include_flow_angle=include_flow_angle) # , curr_reach)
 				# reaches[next_state_tuple] = curr_reach
 				pq.put((priority, next_state_tuple))
-				backward_pointers[next_state_tuple] = [(float128(rate) / float128(total_rate), curr_state)]
+				backward_pointers[next_state_tuple] = [((rate) / (total_rate), curr_state)]
 			else:
-				backward_pointers[tuple(next_state)].append((rate / total_rate, curr_state))
+				backward_pointers[tuple(next_state)].append(((rate) / (total_rate), curr_state))
 	if print_when_done:
 		print(f"Explored {num_explored} states")
 		print_counterexamples()
@@ -142,16 +142,17 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 		num_explored += 1
 		if num_explored % 20000 == 0:
 			print(f"Explored {num_explored} states")
+		# print("=============================================")
 		curr_state_data = pq.get()
 		curr_state = curr_state_data.vec
-		# print(curr_state, curr_state_data.order)
-		# print(f"\tEpsilon: {curr_state_data.epsilon}")
+		print(curr_state, curr_state_data.order)
+		print(f"\tEpsilon: {curr_state_data.epsilon[len(curr_state_data.epsilon) - 1]}")
 		if satisfies(curr_state, boundary):
 			print(f"Found satisfying state {tuple(curr_state)}")
 			force_end_traceback = False
 			traceback(tuple(curr_state))
 		# else:
-			# print(f"{curr_state} does NOT satisfy")
+		# 	print(f"{curr_state} does NOT satisfy")
 		successors, total_rate = curr_state_data.successors()
 		for s, rate in successors:
 			next_state = s.vec
@@ -160,9 +161,9 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 				next_state_tuple = tuple(next_state)
 				# Only explore new states
 				pq.put(s)
-				backward_pointers[next_state_tuple] = [(rate / total_rate, tuple(curr_state))]
+				backward_pointers[next_state_tuple] = [((rate) / (total_rate), tuple(curr_state))]
 			else:
-				backward_pointers[tuple(next_state)].append((float128(rate) / float128(total_rate), tuple(curr_state)))
+				backward_pointers[tuple(next_state)].append(((rate) / (total_rate), tuple(curr_state)))
 	if print_when_done:
 		print(f"Explored {num_explored} states")
 		print_counterexamples()

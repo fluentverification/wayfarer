@@ -127,6 +127,7 @@ class DepGraph:
 		self.used_species = {}
 		# self.produced_species = {}
 		self.graph_root = self.create_graph(change)
+		self.create_reaction_levels()
 
 	def create_graph(self, change, level = 0):
 		'''
@@ -184,7 +185,7 @@ class DepGraph:
 					producer_idxs = [self.species_names.index(producer_species) for producer_species in producer.in_species if producer_species not in self.used_species]
 					new_change = np.matrix([float(i in producer_idxs) for i in range(len(self.mask))]).T
 					count = abs(c)
-					self.declare_reaction_at_level(producer, level)
+					# self.declare_reaction_at_level(producer, level)
 					# recurse down until satisfied
 					next_reactions = self.create_graph(new_change, level + 1)
 					successors.append(Node(producer, next_reactions, level + 1, count))
@@ -203,13 +204,29 @@ class DepGraph:
 					consumer_idxs = [self.species_names.index(consumer_species) for consumer_species in consumer.in_species if consumer_species not in self.used_species]
 					new_change = np.matrix([0.0 - float(i in consumer_idxs) for i in range(len(self.mask))]).T
 					count = abs(c)
-					self.declare_reaction_at_level(consumer, level)
+					# self.declare_reaction_at_level(consumer, level)
 					next_reactions = self.create_graph(new_change, level + 1)
 					# recurse down until satisfied
 					successors.append(Node(consumer, next_reactions, level + 1, count))
 			species_idx += 1
 
 		return successors
+
+	def create_reaction_levels(self):
+		for node in self.graph_root:
+			self.create_reaction_level(node)
+		self.reaction_levels.reverse()
+
+	def create_reaction_level(self, node : Node):
+		if node is None:
+			return -1
+		if node.children is None or len(node.children) == 0:
+			self.declare_reaction_at_level(node.reaction, 0)
+			return 0
+		successor_levels = [self.create_reaction_level(n) for n in node.children]
+		level = 1 + min(successor_levels)
+		self.declare_reaction_at_level(node.reaction, level)
+		return level
 
 	def declare_reaction_at_level(self, reaction, level):
 		'''
@@ -277,4 +294,6 @@ class DepGraph:
 			last_layer = available_reactions[last_idx + 1:idx + 1]
 			subspace = Subspace(used_transitions, unused_transitions, last_layer)
 			subspaces.append(subspace)
+		subspaces.reverse()
+		print([str(subspace) for subspace in subspaces])
 		return subspaces

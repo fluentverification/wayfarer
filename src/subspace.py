@@ -42,11 +42,15 @@ class Subspace:
 		self.P = A * np.linalg.pinv(A.T * A) * A.T
 		self.rank = np.linalg.matrix_rank(self.P)
 
-	def get_update_vectors(self):
+	def get_update_vectors(self, crn=None):
 		'''
 		If we set the last layer to not none, we will
 		restrict the next fireable reactions to that layer
+		Also, if the optional crn parameter is not none, will return all
+		transitions in the crn
 		'''
+		if crn is not None:
+			return crn.transitions
 		if self.last_layer is not None:
 			return self.last_layer
 		else:
@@ -78,6 +82,9 @@ class Subspace:
 		# Ensures(Result() >= 0.0)
 		return self.norm(self.P * vec - vec)
 
+	def __str__(self):
+		return f"Subspace with basis reactions {[str(t) for t in self.transitions]}"
+
 
 class State:
 	# Stores in ASCENDING ORDER, i.e., S0 \in S1 \in S2 ...
@@ -87,12 +94,14 @@ class State:
 	# the species we don't
 
 	init : np.matrix = None
+	crn : Crn = None
 	# @staticmethod
 	def initialize_static_vars(crn, dep):
 		State.subspaces = dep.create_subspaces(crn)
 		State.init = np.matrix(crn.init_state).T
 		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
 		Subspace.mask = np.matrix([b.to_mask() for b in crn.boundary]).T
+		State.crn = crn
 		print(f"Dependency Graph: {dep}")
 
 	def __init__(self, vec):
@@ -114,7 +123,8 @@ class State:
 		# Ensures(self.order >= -1)
 		# Ensures(len(self.epsilon) == len(State.subspaces) + 1)
 		self.vec = vec
-		self.adj = vec - State.init
+		self.vecm = np.matrix(vec).T
+		self.adj = self.vecm - State.init
 		self.order : int = 0
 		self.__compute_order()
 
@@ -128,7 +138,7 @@ class State:
 		# Ensures(type(self.epsilon == list[float]))
 		# Ensures(len(self.epsilon) >= 1)
 		# Ensures(Forall(int, lambda i : (Implies(i > 0 and i < len(State.subspaces), self.epsilon[i] >= self.epsilon[i - 1]))))
-		dist_to_target = State.subspaces[0].norm(self.vec - State.target)
+		dist_to_target = State.subspaces[0].norm(self.vecm - State.target)
 		if dist_to_target == 0.0:
 			self.epsilon : list = [0.0]
 			self.order = -1
@@ -157,9 +167,14 @@ class State:
 		# Ensures(Result()[1] >= 0.0)
 		succ = []
 		total_outgoing_rate = 0.0
-		subspace = State.subspaces[len(State.subspaces) - (self.order + 1)]
-		for t in subspace.get_update_vectors():
+		subspace = State.subspaces[len(State.subspaces) - (self.order + 2)]
+		# print(f"Successors from subspace '{subspace}'")
+		update_vectors = subspace.get_update_vectors(State.crn)
+		# print(f"Update vectors {[str(vec) for vec in update_vectors]}")
+		for t in update_vectors:
+			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
+				# print("enabled")
 				# print("Update", t.vector)
 				next_state = State(self.vec + t.vector)
 				rate = t.rate_finder(next_state.vec)
@@ -174,12 +189,15 @@ class State:
 					next_state.epsilon[len(next_state.epsilon) - 1] > self.epsilon[len(self.epsilon) - 1]:
 					continue
 				succ.append((next_state, rate))
+			# else:
+			# 	print("not enabled")
 		# Compute this rate using ALL transitions, not just the ones we use for successors
 		for t in subspace.excluded_transitions:
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)
 				total_outgoing_rate += rate
 		# print([s[0].vec for s in succ])
+		# print(f"For state {self.vec}, successors are {[state.vec for state, rate in succ]}")
 		return succ, total_outgoing_rate
 
 	# Comparators. ONLY COMPARES THE ORDER AND THE LOWEST VALUE FOR EPSILON
@@ -187,13 +205,15 @@ class State:
 	def __gt__(self, other):
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
-		return self.order > other.order or (self.order == other.order and self.epsilon[0] > other.epsilon[0])
+		return self.epsilon[len(self.epsilon) - 1] > other.epsilon[len(other.epsilon) - 1]
+		# return self.order > other.order or (self.order == other.order and self.epsilon[0] > other.epsilon[0])
 
 	# @Pure
 	def __lt__(self, other):
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
-		return self.order < other.order or (self.order == other.order and self.epsilon[0] < other.epsilon[0])
+		return self.epsilon[len(self.epsilon) - 1] < other.epsilon[len(other.epsilon) - 1]
+		# return self.order < other.order or (self.order == other.order and self.epsilon[0] < other.epsilon[0])
 
 	# @Pure
 	def __le__(self, other):
@@ -216,7 +236,8 @@ class State:
 		'''
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
-		return self.order == other.order and self.epsilon[0] == other.epsilon[0]
+		return self.epsilon[len(self.epsilon) - 1] == other.epsilon[len(other.epsilon) - 1]
+		# return self.order == other.order and self.epsilon[0] == other.epsilon[0]
 
 	# Strong equality means we are the same state
 	# @Pure
