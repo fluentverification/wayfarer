@@ -125,6 +125,7 @@ class DepGraph:
 		self.visited_changes = {}
 		self.used_reactions = {}
 		self.used_species = {}
+		self.init_state = init_state
 		# self.produced_species = {}
 		self.graph_root = self.create_graph(change)
 		self.create_reaction_levels()
@@ -149,6 +150,8 @@ class DepGraph:
 				self.used_species[species] = True
 				if not species in self.producers:
 					print(f"Unable to continue this path to satisfiability! (This is not an error): produce {species}")
+					continue
+				if self.init_state[species_idx] > 0:
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
@@ -177,6 +180,8 @@ class DepGraph:
 				# We need a producer reaction
 				# print(self.producers)
 				if not species in self.producers:
+					continue
+				if self.init_state[species_idx] > 0:
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
