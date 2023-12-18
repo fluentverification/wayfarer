@@ -290,14 +290,16 @@ class DepGraph:
 		subspaces = []
 		# print(indecies)
 		# Perhaps restrict the reactions only to the current level?
+		print(indecies, "and ", [t.name for t in available_reactions])
 		for i in range(len(indecies)):
 			idx = indecies[i]
 			last_idx = indecies[i - 1] if i > 1 else 0
 			# TODO: should be idx or idx + 1
 			used_transitions = available_reactions[:idx + 1]
 			unused_transitions = available_reactions[idx + 1:]
-			last_layer = available_reactions[last_idx + 1:idx + 1]
-			subspace = Subspace(used_transitions, unused_transitions, last_layer)
+			last_layer = available_reactions[last_idx:idx]
+			subspace = Subspace(used_transitions, unused_transitions) #, last_layer)
+			print(f"Last layer is {[t.name for t in last_layer]}")
 			subspaces.append(subspace)
 		subspaces.reverse()
 		print([str(subspace) for subspace in subspaces])
