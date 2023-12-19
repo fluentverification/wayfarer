@@ -81,7 +81,6 @@ class RandomAccessSparseMatrixBuilder:
 		return matrix_builder.build()
 
 	def size(self):
-		print(len(self.from_list), len(self.exit_rates))
 		return len(self.from_list)
 
 	def add_exit_rate(self, idx : int, rate : float):
@@ -192,8 +191,9 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	chk_property = "P=? [ true U \"satisfy\" ]"
 	exit_rates = [rate if rate is not None else 0.0 for rate in matrixBuilder.exit_rates]
 	components.exit_rates = exit_rates
-	print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
+	# print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
 	model = stormpy.storage.SparseCtmc(components)
+	print(model)
 	print(f"Matrix built (size {matrixBuilder.size()})")
 	print("Checking model...")
 	prop = stormpy.parse_properties(chk_property)[0] # stormpy.Property("Lower Bound", )
