@@ -189,7 +189,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 		labeling.add_label_to_state("satisfy", idx)
 	components = SparseModelComponents(matrix, labeling, {}, False)
 	chk_property = "P=? [ true U \"satisfy\" ]"
-	exit_rates = [rate if rate is not None else 0.0 for rate in matrixBuilder.exit_rates]
+	exit_rates = [rate if rate is not None else 1.0 for rate in matrixBuilder.exit_rates]
 	components.exit_rates = exit_rates
 	# print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
 	model = stormpy.storage.SparseCtmc(components)
