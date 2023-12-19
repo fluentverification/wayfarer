@@ -7,7 +7,8 @@ import sys
 import queue
 import random
 
-from stormpy import SparseMatrixBuilder
+from stormpy import SparseMatrixBuilder, StateLabeling, SparseModelComponents
+import stormpy
 
 sys.setrecursionlimit(sys.getrecursionlimit() * 50)
 
@@ -48,10 +49,12 @@ class RandomAccessSparseMatrixBuilder:
 	A wrapper class for random entry into storm's sparse matrix builder
 	'''
 	def __init__(self):
-		self.from_list = [[]]
+		# Self loop for the absorbing state
+		self.from_list = [[Entry(0, 1.0)]]
+		self.exit_rates = [1.0]
 
 	def add_next_value(self, row : int, col : int, val : float):
-		while len(self.from_list) < row:
+		while len(self.from_list) <= row:
 			self.from_list.append([])
 		self.from_list[row].append(Entry(col, val))
 
@@ -75,6 +78,14 @@ class RandomAccessSparseMatrixBuilder:
 		matrix_builder = self.to_smb()
 		return matrix_builder.build()
 
+	def size(self):
+		print(len(self.from_list), len(self.exit_rates))
+		return len(self.from_list)
+
+	def add_exit_rate(self, idx : int, rate : float):
+		while len(self.exit_rates) <= idx:
+			self.exit_rates.append(None)
+		self.exit_rates[idx] = rate
 
 def reset():
 	# global DESIRED_NUMBER_COUNTEREXAMPLES
@@ -106,6 +117,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	DESIRED_NUMBER_STATES = number
 	boundary = crn.boundary
 	num_explored = 0
+	sat_states = []
 	# Min queue
 	pq = queue.PriorityQueue()
 	curr_state = None
@@ -120,16 +132,26 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 		if num_explored % 20000 == 0:
 			print(f"Explored {num_explored} states")
 		curr_state_data = pq.get()
+		# print(f"Exploring state with index {curr_state_data.idx}")
 		curr_state = curr_state_data.vec
 		if satisfies(curr_state, boundary):
 			print(f"Found satisfying state {tuple(curr_state)}")
 			num_satstates += 1
+			sat_states.append(curr_state_data.idx)
+			# We will create a self-loop later, so declare the total exit rate as 1.0
+			matrixBuilder.add_exit_rate(curr_state_data.idx, 1.0)
+			continue
 
 		successors, total_rate = curr_state_data.successors()
+		if len(successors) == 0:
+			# Introduce a self-loop
+			matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
+		matrixBuilder.add_exit_rate(curr_state_data.idx, total_rate)
 		for s, rate in successors:
 			next_state = s.vec
 			# If the state is new, we explore it
-			if not tuple(next_state) in state_ids:
+			next_state_tuple = tuple(next_state)
+			if next_state_tuple not in state_ids:
 				all_states.append(s)
 				# Assign new index
 				state_ids[next_state_tuple] = last_index
@@ -138,17 +160,31 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 				next_state_tuple = tuple(next_state)
 				# Only explore new states
 				pq.put(s)
+			else:
+				s = all_states[state_ids[next_state_tuple]]
 			assert(s.idx is not None)
 			# Place the transition in the matrix
 			matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
 	if print_when_done:
 		print(f"Explored {num_explored} states. Found {num_satstates} satisfying states.")
-	finalize_and_check()
+	finalize_and_check(matrixBuilder, sat_states)
 
 def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list):
 	# First, connect all terminal states to absorbing
 	global all_states
 	for state in all_states[1::]:
 		if state.perimeter:
-			matrixBuilder.add_next_value(state.idx, 0)
-	print("Matrix built")
+			matrixBuilder.add_next_value(state.idx, 0, 1.0)
+			matrixBuilder.add_exit_rate(state.idx, 1.0)
+	matrix = matrixBuilder.build()
+	labeling = StateLabeling(matrixBuilder.size())
+	labeling.add_label("satisfy")
+	for idx in satisfying_state_idxs:
+		labeling.add_label_to_state("satisfy", idx)
+	components = SparseModelComponents(matrix, labeling, {}, False)
+	properties = [] # TODO
+	exit_rates = [rate if rate is not None else 0.0 for rate in matrixBuilder.exit_rates]
+	components.exit_rates = exit_rates
+	print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
+	model = stormpy.storage.SparseCtmc(components)
+	print(f"Matrix built (size {matrixBuilder.size()})")
