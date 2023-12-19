@@ -171,7 +171,8 @@ class State:
 		self.perimeter = False
 		succ = []
 		total_outgoing_rate = 0.0
-		subspace = State.subspaces[len(State.subspaces) - (self.order + 2)]
+        # TODO: why is this IndexError'ing on some models?
+		subspace = State.subspaces[max(0, len(State.subspaces) - (self.order + 2))]
 		# print(f"Successors from subspace '{subspace}'")
 		update_vectors = subspace.get_update_vectors() # State.crn)
 		# print(f"Update vectors {[str(vec) for vec in update_vectors]}")
