@@ -68,6 +68,8 @@ class RandomAccessSparseMatrixBuilder:
 			for entry in self.from_list[row]:
 				col = entry.col
 				val = entry.val
+				if row == col:
+					continue
 				matrix_builder.add_next_value(row, col, val)
 		return matrix_builder
 
@@ -130,12 +132,12 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	while (not pq.empty()) and num_satstates < number:
 		num_explored += 1
 		if num_explored % 20000 == 0:
-			print(f"Explored {num_explored} states")
+			print(f"Explored {num_explored} states. Have {num_satstates} satisfying")
 		curr_state_data = pq.get()
 		# print(f"Exploring state with index {curr_state_data.idx}")
 		curr_state = curr_state_data.vec
 		if satisfies(curr_state, boundary):
-			print(f"Found satisfying state {tuple(curr_state)}")
+			# print(f"Found satisfying state {tuple(curr_state)}")
 			num_satstates += 1
 			sat_states.append(curr_state_data.idx)
 			# We will create a self-loop later, so declare the total exit rate as 1.0
@@ -178,13 +180,22 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 			matrixBuilder.add_exit_rate(state.idx, 1.0)
 	matrix = matrixBuilder.build()
 	labeling = StateLabeling(matrixBuilder.size())
+	# Add initial state labeling
+	labeling.add_label("init")
+	labeling.add_label_to_state("init", 1)
 	labeling.add_label("satisfy")
+	labeling.add_label("absorbing")
+	labeling.add_label_to_state("absorbing", 0)
 	for idx in satisfying_state_idxs:
 		labeling.add_label_to_state("satisfy", idx)
 	components = SparseModelComponents(matrix, labeling, {}, False)
-	properties = [] # TODO
+	chk_property = "P=? [ true U \"satisfy\" ]"
 	exit_rates = [rate if rate is not None else 0.0 for rate in matrixBuilder.exit_rates]
 	components.exit_rates = exit_rates
 	print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
 	model = stormpy.storage.SparseCtmc(components)
 	print(f"Matrix built (size {matrixBuilder.size()})")
+	print("Checking model...")
+	prop = stormpy.parse_properties(chk_property)[0] # stormpy.Property("Lower Bound", )
+	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
+	print(result.at(1))
