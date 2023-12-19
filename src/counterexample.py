@@ -14,7 +14,7 @@ import random
 
 sys.setrecursionlimit(sys.getrecursionlimit() * 50)
 
-TRACEBACK_BOUND=10
+TRACEBACK_BOUND=1 # 10 # 10000 # 100000
 DESIRED_NUMBER_COUNTEREXAMPLES=2
 
 force_end_traceback=False
@@ -65,6 +65,7 @@ recursive algorithm to get SOME (not all) tracebacks to init state from current 
 			counterexamples.append((tail_probability * normalized_rate, new_tail))
 			num_counterexamples = len(counterexamples)
 			print(f"Found counterexample! Now we have {len(counterexamples)}")
+			force_end_traceback = True
 		else:
 			traceback(state, new_tail, tail_probability * normalized_rate)
 	# print(f"ERROR: found no counterexample in traceback!")
@@ -124,7 +125,7 @@ def find_counterexamples(crn, number=1, print_when_done=False, include_flow_angl
 		print(f"Explored {num_explored} states")
 		print_counterexamples()
 
-def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
+def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False):
 	reset()
 	State.initialize_static_vars(crn, dep)
 	global DESIRED_NUMBER_COUNTEREXAMPLES
@@ -140,7 +141,7 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 	init_state = crn.init_state
 	reaches[tuple(init_state)] = 1.0
 	pq.put((State(init_state)))
-	while (not pq.empty()) and num_counterexamples < number and not force_end_traceback:
+	while (not pq.empty()) and num_counterexamples < number: # and not force_end_traceback:
 		# Invariant(not pq.empty() or MustTerminate(num_counterexamples < number))
 		# print(pq.qsize())
 		num_explored += 1
@@ -171,6 +172,8 @@ def find_counterexamples_subsp(crn, dep, number=1, print_when_done=False):
 	if print_when_done:
 		print(f"Explored {num_explored} states")
 		print_counterexamples()
+	if write_when_done:
+		print_counterexamples(True, True, True)
 
 def find_counterexamples_randomly(crn, number=1, print_when_done=False, trace_length=100):
 	reset()
@@ -212,13 +215,22 @@ def find_counterexamples_randomly(crn, number=1, print_when_done=False, trace_le
 		print_counterexamples()
 
 
-def print_counterexamples(show_entire_trace=False):
+
+
+def print_counterexamples(show_entire_trace=False, write_when_done=False, single_line=False):
 	global counterexamples
-	print(f"Finished finding {len(counterexamples)} counterexamples")
+	out_file = sys.stdout
+	if write_when_done:
+		out_file = open("traces.wayfarer", "w")
+		print("Writing to traces.wayfarer")
+	end="\n"
+	if single_line:
+		end=" "
+	print(f"Finished finding {len(counterexamples)} counterexamples", file=out_file)
 	lower_bound = 0.0
 	for est_prob, ce in counterexamples:
 		lower_bound += est_prob
-		print(f"Counterexample size {len(ce)} (esimated probability {est_prob})")
+		print(f"Counterexample size {len(ce)} (esimated probability {est_prob})", file=out_file, end=end)
 		# print(ce)
 		if show_entire_trace:
 			for i in range(len(ce)):
@@ -228,5 +240,12 @@ def print_counterexamples(show_entire_trace=False):
 					additional_message = " (satisfying state)"
 				elif i == len(ce) - 1:
 					additional_message = " (initial state)"
-				print(f"\tState: {state}{additional_message}")
-	print(f"Total lower bound probability: {lower_bound}")
+				if single_line:
+					print(f"State: {state}{additional_message}", file=out_file, end=end)
+				else:
+					print(f"\tState: {state}{additional_message}", file=out_file, end=end)
+		if single_line:
+			print(file=out_file)
+	print(f"Total lower bound probability: {lower_bound}", file=out_file)
+	if write_when_done:
+		out_file.close()

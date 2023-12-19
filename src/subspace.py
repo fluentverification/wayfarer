@@ -104,7 +104,7 @@ class State:
 		State.crn = crn
 		print(f"Dependency Graph: {dep}")
 
-	def __init__(self, vec):
+	def __init__(self, vec, idx=None):
 		'''
 		Constructor for a new State element. Members within the State class:
 		1. vec (type: np.matrix) : the actual vector representing the state values
@@ -127,6 +127,8 @@ class State:
 		self.adj = self.vecm - State.init
 		self.order : int = 0
 		self.__compute_order()
+		self.perimeter = True
+		self.idx = idx
 
 	def __compute_order(self):
 		'''
@@ -152,7 +154,6 @@ class State:
 			self.epsilon.insert(0, ep)
 			self.order += 1
 
-	# @Pure
 	def successors(self): # -> tuple:
 		'''
 		Only returns the successors using the vectors in the dependency graph
@@ -165,6 +166,9 @@ class State:
 		# Ensures(type(Result()[0]) == list)
 		# Ensures(type(Result()[1]) == float)
 		# Ensures(Result()[1] >= 0.0)
+
+		# If we get the successors, we are no longer a perimeter state
+		self.perimeter = False
 		succ = []
 		total_outgoing_rate = 0.0
 		subspace = State.subspaces[len(State.subspaces) - (self.order + 2)]
