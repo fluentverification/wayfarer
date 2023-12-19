@@ -69,6 +69,7 @@ class RandomAccessSparseMatrixBuilder:
 				col = entry.col
 				val = entry.val
 				if row == col:
+					matrix_builder.add_next_value(row, col, 1.0)
 					continue
 				matrix_builder.add_next_value(row, col, val)
 		return matrix_builder
@@ -198,4 +199,5 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	print("Checking model...")
 	prop = stormpy.parse_properties(chk_property)[0] # stormpy.Property("Lower Bound", )
 	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
+	print(result)
 	print(result.at(1))
