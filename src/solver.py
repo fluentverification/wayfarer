@@ -255,4 +255,4 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	prop = stormpy.parse_properties(chk_property)[0] # stormpy.Property("Lower Bound", )
 	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
 	assert(result.min >= 0.0 and result.max <= 1.0)
-	print(result.at(1))
+	print(f"Pmin = {result.at(1)}")
