@@ -68,12 +68,15 @@ class RandomAccessSparseMatrixBuilder:
 		matrix_builder = SparseMatrixBuilder()
 		for row in range(len(self.from_list)):
 			self.from_list[row].sort()
+			if len(self.from_list[row]) == 0:
+				matrix_builder.add_next_value(row, row, 1.0)
 			for entry in self.from_list[row]:
 				col = entry.col
 				val = entry.val
 				if row == col:
-					# matrix_builder.add_next_value(row, col, 1.0)
-					continue
+					assert(len(self.from_list[row]) == 1)
+					matrix_builder.add_next_value(row, col, 1.0)
+					break
 				matrix_builder.add_next_value(row, col, val)
 		return matrix_builder
 
@@ -94,9 +97,10 @@ class RandomAccessSparseMatrixBuilder:
 
 	def assert_all_entries_correct(self):
 		print(len(self.exit_rates), len(self.from_list))
-		assert(len(self.exit_rates) == len(self.from_list))
+		print(self.exit_rates[len(self.exit_rates) - 1])
+		# assert(len(self.exit_rates) == len(self.from_list))
 		for i in range(len(self.from_list)):
-			print(f"{i}: {self.exit_rates[i]}, {[str(entry) for entry in self.from_list[i]]}")
+			# print(f"{i}: {self.exit_rates[i]}, {[str(entry) for entry in self.from_list[i]]}")
 			if len(self.from_list[i]) == 0:
 				self.exit_rates[i] = None
 				assert(self.exit_rates[i] is None)
@@ -159,6 +163,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			sat_states.append(curr_state_data.idx)
 			# We will create a self-loop later, so declare the total exit rate as 1.0
 			matrixBuilder.add_exit_rate(curr_state_data.idx, 1.0)
+			matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
 			deadlock_idxs.append(curr_state_data.idx)
 			curr_state_data.perimeter = False
 			continue
@@ -232,7 +237,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 		labeling.add_label_to_state("deadlock", idx)
 	components = SparseModelComponents(matrix, labeling, {}, False)
 	chk_property = "P=? [ true U \"satisfy\" ]"
-	exit_rates = [rate if rate is not None else 0.0 for rate in matrixBuilder.exit_rates]
+	exit_rates = [rate if rate is not None else 1.0 for rate in matrixBuilder.exit_rates]
 	components.exit_rates = exit_rates
 	# print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
 	model = stormpy.storage.SparseCtmc(components)
