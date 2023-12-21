@@ -96,8 +96,6 @@ class RandomAccessSparseMatrixBuilder:
 		self.exit_rates[idx] = rate
 
 	def assert_all_entries_correct(self):
-		print(len(self.exit_rates), len(self.from_list))
-		print(self.exit_rates[len(self.exit_rates) - 1])
 		# assert(len(self.exit_rates) == len(self.from_list))
 		for i in range(len(self.from_list)):
 			# print(f"{i}: {self.exit_rates[i]}, {[str(entry) for entry in self.from_list[i]]}")
