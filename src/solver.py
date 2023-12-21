@@ -15,6 +15,8 @@ sys.setrecursionlimit(sys.getrecursionlimit() * 50)
 DESIRED_NUMBER_STATES=2
 ABSORBING_INDEX=0
 
+PRINT_FREQUENCY=100000
+
 force_end_traceback=False
 reaches = {}
 counterexamples = []
@@ -150,7 +152,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	deadlock_idxs = [0]
 	while (not pq.empty()) and num_satstates < number:
 		num_explored += 1
-		if num_explored % 20000 == 0:
+		if num_explored % PRINT_FREQUENCY == 0:
 			print(f"Explored {num_explored} states. Have {num_satstates} satisfying")
 		curr_state_data = pq.get()
 		# print(f"Exploring state with index {curr_state_data.idx}")
@@ -233,7 +235,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	labeling.add_label("deadlock")
 	for idx in deadlock_idxs:
 		labeling.add_label_to_state("deadlock", idx)
-	components = SparseModelComponents(matrix, labeling, {}, False)
+	components = SparseModelComponents(matrix, labeling, {}, rate_transitions=True)
 	chk_property = "P=? [ true U \"satisfy\" ]"
 	exit_rates = [rate if rate is not None else 1.0 for rate in matrixBuilder.exit_rates]
 	components.exit_rates = exit_rates
