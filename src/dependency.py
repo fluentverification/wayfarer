@@ -52,7 +52,7 @@ class Reaction:
 		line_elems = line.replace("\n", "").split("\t")
 		# print(line_elems)
 		self.name = line_elems[0]
-		print(f"Creating reaction name {self.name}")
+		# print(f"Creating reaction name {self.name}")
 		sep_idx = line_elems.index(">")
 		# ===============================
 		# actual names of species
@@ -63,7 +63,7 @@ class Reaction:
 		self.out_species = line_elems[sep_idx + 1:len(line_elems) - 1]
 		if "0" in self.out_species:
 			self.out_species.remove("0")
-		print("out", self.out_species)
+		# print("out", self.out_species)
 		# ===============================
 		for spec in self.out_species:
 			if not spec in self.in_species:
@@ -246,7 +246,7 @@ class DepGraph:
 		'''
 		Declares a reaction as a producer (called by the reaction's constructor)
 		'''
-		print(f"Declaring {reaction} as producer of {species}")
+		# print(f"Declaring {reaction} as producer of {species}")
 		if not species in self.producers:
 			self.producers[species] = [reaction]
 		else:
@@ -256,7 +256,7 @@ class DepGraph:
 		'''
 		Declares a reaction as a consumer (called by the reaction's constructor)
 		'''
-		print(f"Declaring {reaction} as consumer of {species}")
+		# print(f"Declaring {reaction} as consumer of {species}")
 		if not species in self.consumers:
 			self.consumers[species] = [reaction]
 		else:
@@ -290,7 +290,7 @@ class DepGraph:
 		subspaces = []
 		# print(indecies)
 		# Perhaps restrict the reactions only to the current level?
-		print(indecies, "and ", [t.name for t in available_reactions])
+		# print(indecies, "and ", [t.name for t in available_reactions])
 		for i in range(len(indecies)):
 			idx = indecies[i]
 			last_idx = indecies[i - 1] if i > 1 else 0
@@ -299,8 +299,8 @@ class DepGraph:
 			unused_transitions = available_reactions[idx + 1:]
 			last_layer = available_reactions[last_idx:idx]
 			subspace = Subspace(used_transitions, unused_transitions) #, last_layer)
-			print(f"Last layer is {[t.name for t in last_layer]}")
+			# print(f"Last layer is {[t.name for t in last_layer]}")
 			subspaces.append(subspace)
 		subspaces.reverse()
-		print([str(subspace) for subspace in subspaces])
+		# print([str(subspace) for subspace in subspaces])
 		return subspaces

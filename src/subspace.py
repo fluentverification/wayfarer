@@ -102,7 +102,7 @@ class State:
 		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
 		Subspace.mask = np.matrix([b.to_mask() for b in crn.boundary]).T
 		State.crn = crn
-		print(f"Dependency Graph: {dep}")
+		print(f"{dep}")
 
 	def __init__(self, vec, idx=None):
 		'''

@@ -44,6 +44,9 @@ class Entry:
 	def __ge__(self, other):
 		return not self < other
 
+	def __str__(self):
+		return f"{self.col}:{self.val}"
+
 class RandomAccessSparseMatrixBuilder:
 	'''
 	A wrapper class for random entry into storm's sparse matrix builder
@@ -69,7 +72,7 @@ class RandomAccessSparseMatrixBuilder:
 				col = entry.col
 				val = entry.val
 				if row == col:
-					matrix_builder.add_next_value(row, col, 1.0)
+					# matrix_builder.add_next_value(row, col, 1.0)
 					continue
 				matrix_builder.add_next_value(row, col, val)
 		return matrix_builder
@@ -88,6 +91,19 @@ class RandomAccessSparseMatrixBuilder:
 		while len(self.exit_rates) <= idx:
 			self.exit_rates.append(None)
 		self.exit_rates[idx] = rate
+
+	def assert_all_entries_correct(self):
+		print(len(self.exit_rates), len(self.from_list))
+		assert(len(self.exit_rates) == len(self.from_list))
+		for i in range(len(self.from_list)):
+			print(f"{i}: {self.exit_rates[i]}, {[str(entry) for entry in self.from_list[i]]}")
+			if len(self.from_list[i]) == 0:
+				self.exit_rates[i] = None
+				assert(self.exit_rates[i] is None)
+				continue
+			max_entry = max(self.from_list[i])
+			max_rate = max_entry.val
+			assert(self.exit_rates[i] >= max_rate)
 
 def reset():
 	# global DESIRED_NUMBER_COUNTEREXAMPLES
@@ -129,6 +145,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	all_states.append(init_state)
 	pq.put((init_state))
 	last_index += 1
+	deadlock_idxs = [0]
 	while (not pq.empty()) and num_satstates < number:
 		num_explored += 1
 		if num_explored % 20000 == 0:
@@ -142,19 +159,25 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			sat_states.append(curr_state_data.idx)
 			# We will create a self-loop later, so declare the total exit rate as 1.0
 			matrixBuilder.add_exit_rate(curr_state_data.idx, 1.0)
+			deadlock_idxs.append(curr_state_data.idx)
+			curr_state_data.perimeter = False
 			continue
 
 		successors, total_rate = curr_state_data.successors()
 		if len(successors) == 0:
+			print("No successors")
 			# Introduce a self-loop
 			matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
+			continue
 		matrixBuilder.add_exit_rate(curr_state_data.idx, total_rate)
 		for s, rate in successors:
 			next_state = s.vec
 			# If the state is new, we explore it
 			next_state_tuple = tuple(next_state)
 			if next_state_tuple not in state_ids:
+				next_index = len(all_states)
 				all_states.append(s)
+				assert(last_index == next_index)
 				# Assign new index
 				state_ids[next_state_tuple] = last_index
 				s.idx = last_index
@@ -162,16 +185,30 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 				next_state_tuple = tuple(next_state)
 				# Only explore new states
 				pq.put(s)
+			# If this state already exists, use the state data we already have
 			else:
 				s = all_states[state_ids[next_state_tuple]]
 			assert(s.idx is not None)
 			# Place the transition in the matrix
 			matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
 	if print_when_done:
-		print(f"Explored {num_explored} states. Found {num_satstates} satisfying states.")
-	finalize_and_check(matrixBuilder, sat_states)
+		print(f"Explored {len(matrixBuilder.from_list)} states (expanded {num_explored}). Found {num_satstates} satisfying states.")
+	sanity_check()
+	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs)
 
-def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list):
+
+# This can become a lemma when we eventually use Nagini to verify this
+def sanity_check():
+	print("Performing sanity check...", end="")
+	global all_states
+	# Check our indecies
+	idx = 0
+	for state in all_states:
+		assert(state is None or state.idx == idx)
+		idx += 1
+	print("done.")
+
+def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, deadlock_idxs : list):
 	# First, connect all terminal states to absorbing
 	global all_states
 	for state in all_states[1::]:
@@ -179,6 +216,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 			matrixBuilder.add_next_value(state.idx, 0, 1.0)
 			matrixBuilder.add_exit_rate(state.idx, 1.0)
 	matrix = matrixBuilder.build()
+	matrixBuilder.assert_all_entries_correct()
 	labeling = StateLabeling(matrixBuilder.size())
 	# Add initial state labeling
 	labeling.add_label("init")
@@ -188,9 +226,13 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	labeling.add_label_to_state("absorbing", 0)
 	for idx in satisfying_state_idxs:
 		labeling.add_label_to_state("satisfy", idx)
+	# Add the deadlock state indexes
+	labeling.add_label("deadlock")
+	for idx in deadlock_idxs:
+		labeling.add_label_to_state("deadlock", idx)
 	components = SparseModelComponents(matrix, labeling, {}, False)
 	chk_property = "P=? [ true U \"satisfy\" ]"
-	exit_rates = [rate if rate is not None else 1.0 for rate in matrixBuilder.exit_rates]
+	exit_rates = [rate if rate is not None else 0.0 for rate in matrixBuilder.exit_rates]
 	components.exit_rates = exit_rates
 	# print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
 	model = stormpy.storage.SparseCtmc(components)
