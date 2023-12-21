@@ -168,13 +168,21 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			curr_state_data.perimeter = False
 			continue
 
-		successors, total_rate = curr_state_data.successors()
+		# Total expanded rate: the rate of transitions we EXPANDED in the graph
+		# Total full rate: the total rate of all POSSIBLE enabled transitions from this state.
+		successors, total_expanded_rate = curr_state_data.successors()
+		total_full_rate = curr_state_data.get_total_outgoing_rate()
+		assert(total_full_rate >= total_expanded_rate)
 		if len(successors) == 0:
 			print("No successors")
 			# Introduce a self-loop
 			matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
 			continue
-		matrixBuilder.add_exit_rate(curr_state_data.idx, total_rate)
+		# If this is true there are some transitions we didn't expand that we must lead
+		# to the absorbing state. We do this since we only take reactions in that subspace
+		if total_full_rate > total_expanded_rate:
+			matrixBuilder.add_next_value(curr_state_data.idx, 0, total_full_rate - total_expanded_rate)
+		matrixBuilder.add_exit_rate(curr_state_data.idx, total_full_rate)
 		for s, rate in successors:
 			next_state = s.vec
 			# If the state is new, we explore it

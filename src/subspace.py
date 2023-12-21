@@ -154,6 +154,21 @@ class State:
 			self.epsilon.insert(0, ep)
 			self.order += 1
 
+	def get_total_outgoing_rate(self):
+		'''
+		Finds the total outgoing rate for all enabled transitions in the model
+		This is different from the outgoing rate returned by successors(), since
+		that one only includes the outgoing rates of the transitions of the current
+		subspace
+		'''
+		vec = self.vec
+		transitions = State.crn.transitions
+		total_rate = 0.0
+		for t in transitions:
+			if t.enabled(vec):
+				total_rate += t.rate_finder(vec)
+		return total_rate
+
 	def successors(self): # -> tuple:
 		'''
 		Only returns the successors using the vectors in the dependency graph
@@ -182,7 +197,8 @@ class State:
 				# print("enabled")
 				# print("Update", t.vector)
 				next_state = State(self.vec + t.vector)
-				rate = t.rate_finder(next_state.vec)
+				# The rate finder works on the current state, not the next
+				rate = t.rate_finder(self.vec)
 				# print("vec", self.vec)
 				# print("new vec", next_state.vec)
 				total_outgoing_rate += rate
