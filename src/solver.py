@@ -26,8 +26,8 @@ all_transitions = []
 
 class Entry:
 	def __init__(self, col : int, val : float):
-		self.col = col
-		self.val = val
+		self.col : int = col
+		self.val : float = val
 
 	def __eq__(self, other):
 		return other.col == self.col
