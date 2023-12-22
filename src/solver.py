@@ -122,7 +122,7 @@ def reset():
 	state_ids = {} # tuple : int
 	all_states = []
 
-def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False):
+def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None):
 	reset()
 	State.initialize_static_vars(crn, dep)
 	global DESIRED_NUMBER_STATES
@@ -207,7 +207,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	if print_when_done:
 		print(f"Explored {len(matrixBuilder.from_list)} states (expanded {num_explored}). Found {num_satstates} satisfying states.")
 	sanity_check()
-	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs)
+	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs, time_bound)
 
 
 # This can become a lemma when we eventually use Nagini to verify this
@@ -221,7 +221,7 @@ def sanity_check():
 		idx += 1
 	print("done.")
 
-def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, deadlock_idxs : list):
+def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, deadlock_idxs : list, time_bound : int):
 	# First, connect all terminal states to absorbing
 	global all_states
 	for state in all_states[1::]:
@@ -244,14 +244,15 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	for idx in deadlock_idxs:
 		labeling.add_label_to_state("deadlock", idx)
 	components = SparseModelComponents(matrix, labeling, {}, rate_transitions=True)
-	chk_property = "P=? [ true U \"satisfy\" ]"
+	prop_bound = "" if time_bound is None else f"[0, {time_bound}]"
+	chk_property = f"P=? [ true U{prop_bound} \"satisfy\" ]"
 	exit_rates = [rate if rate is not None else 1.0 for rate in matrixBuilder.exit_rates]
 	components.exit_rates = exit_rates
 	# print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
 	model = stormpy.storage.SparseCtmc(components)
 	print(model)
 	print(f"Matrix built (size {matrixBuilder.size()})")
-	print("Checking model...")
+	print(f"Checking model with formula {chk_property}...")
 	prop = stormpy.parse_properties(chk_property)[0] # stormpy.Property("Lower Bound", )
 	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
 	assert(result.min >= 0.0 and result.max <= 1.0)
