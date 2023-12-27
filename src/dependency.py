@@ -136,6 +136,7 @@ class DepGraph:
 		'''
 		Recursive function that creates the graph
 		'''
+		print(f"Called create_graph with change {change.T}")
 		# Decreases the values in the change vector
 		successors = []
 		hashable_change = tuple([float(f) for f in change])
@@ -153,7 +154,7 @@ class DepGraph:
 				if not species in self.producers:
 					print(f"Unable to continue this path to satisfiability! (This is not an error): produce {species}")
 					continue
-				if self.init_state[species_idx] > 0:
+				if self.init_state[species_idx] >= c: # 0:
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
@@ -164,6 +165,8 @@ class DepGraph:
 				self.used_species[species] = True
 				if not species in self.consumers:
 					print(f"Unable to continue this path to satisfiability! (This is not an error): consume {species}")
+					continue
+				if self.init_state[species_idx] <= c:
 					continue
 				spec_consumers = self.consumers[species]
 				for consumer in spec_consumers:
@@ -183,7 +186,7 @@ class DepGraph:
 				# print(self.producers)
 				if not species in self.producers:
 					continue
-				if self.init_state[species_idx] > max(self.desired_values[species_idx], 0):
+				if self.init_state[species_idx] >= c: # max(self.desired_values[species_idx], 0):
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
@@ -201,7 +204,7 @@ class DepGraph:
 				# print(self.consumers)
 				if not species in self.consumers:
 					continue
-				if self.init_state[species_idx] < max(self.desired_values[species_idx], 0):
+				if self.init_state[species_idx] <= c: # max(self.desired_values[species_idx], 0):
 					continue
 
 				spec_consumers = self.consumers[species]
@@ -210,8 +213,10 @@ class DepGraph:
 					if consumer.name in self.used_reactions and not consumer.name in allowed_reactions:
 						continue
 					consumer_idxs = [self.species_names.index(consumer_species) for consumer_species in consumer.in_species if consumer_species not in self.used_species]
-					new_change = np.matrix([0.0 - float(i in consumer_idxs) for i in range(len(self.mask))]).T
-					count = abs(c)
+					# We want reactions that PRODUCE these in species, so this consumer can fire.
+					# ex., if A + B -> None, and we want to consume B, we must first PRODUCE A
+					count = float(abs(c))
+					new_change = np.matrix([(float(i in consumer_idxs) * count) for i in range(len(self.mask))]).T
 					# self.declare_reaction_at_level(consumer, level)
 					next_reactions = self.create_graph(new_change, level + 1)
 					# recurse down until satisfied
