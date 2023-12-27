@@ -15,6 +15,8 @@ ABSORBING_INDEX=0
 
 PRINT_FREQUENCY=100000
 
+all_states = []
+
 class Entry:
 	def __init__(self, col : int, val : float):
 		self.col : int = col
@@ -99,8 +101,10 @@ class RandomAccessSparseMatrixBuilder:
 			assert(self.exit_rates[i] >= max_rate)
 
 def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None):
+	global all_states
 	State.initialize_static_vars(crn, dep)
 	state_ids = {}
+	all_states = []
 	# Add the absorbing state
 	matrixBuilder = RandomAccessSparseMatrixBuilder()
 	last_index = ABSORBING_INDEX + 1
@@ -108,7 +112,6 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	# Other stuff
 	boundary = crn.boundary
 	sat_states = []
-	all_states = []
 	# Min queue
 	pq = queue.PriorityQueue()
 	curr_state = None
