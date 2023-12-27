@@ -104,6 +104,7 @@ class DepGraph:
 		self.species_names = species_names
 		self.root = []
 		self.mask = np.matrix([1.0 for _ in range(len(init_state))]).T
+		self.desired_values = desired_values
 		# Creates the reactions
 		for reaction in reactions:
 			r = Reaction(reaction, self)
@@ -120,6 +121,7 @@ class DepGraph:
 		# We want values of zero when we find a -1 and a value of 1 for all others
 		self.mask = np.matrix([int(int(val.strip()) != -1) for val in ragtimer_lines[2].split("\t")]).T
 		desired_values = np.matrix([int(val.strip()) for val in ragtimer_lines[2].split("\t")]).T
+		self.desired_values = desired_values
 		init_state = np.matrix([int(val) for val in ragtimer_lines[1].split("\t")]).T
 		change = np.multiply(desired_values - init_state, self.mask)
 		self.visited_changes = {}
@@ -181,7 +183,7 @@ class DepGraph:
 				# print(self.producers)
 				if not species in self.producers:
 					continue
-				if self.init_state[species_idx] > 0:
+				if self.init_state[species_idx] > max(self.desired_values[species_idx], 0):
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
