@@ -201,6 +201,9 @@ class DepGraph:
 				# print(self.consumers)
 				if not species in self.consumers:
 					continue
+				if self.init_state[species_idx] < max(self.desired_values[species_idx], 0):
+					continue
+
 				spec_consumers = self.consumers[species]
 
 				for consumer in spec_consumers:
