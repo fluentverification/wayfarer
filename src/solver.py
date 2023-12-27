@@ -181,6 +181,9 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
 	if print_when_done:
 		print(f"Explored {len(matrixBuilder.from_list)} states (expanded {num_explored}). Found {num_satstates} satisfying states.")
+	if num_satstates == 0:
+		print(f"Could not find any satisfying states!")
+		return
 	sanity_check()
 	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs, time_bound)
 
