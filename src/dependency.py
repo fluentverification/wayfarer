@@ -197,8 +197,6 @@ class DepGraph:
 			elif c < 0:
 				# We need a consumer reaction
 				# print(self.consumers)
-				new_mask = cur_mask.copy()
-				new_mask[species_idx] = 0.0
 				if not species in self.consumers:
 					continue
 				spec_consumers = self.consumers[species]
