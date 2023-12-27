@@ -10,21 +10,10 @@ import random
 from stormpy import SparseMatrixBuilder, StateLabeling, SparseModelComponents
 import stormpy
 
-sys.setrecursionlimit(sys.getrecursionlimit() * 50)
-
 DESIRED_NUMBER_STATES=2
 ABSORBING_INDEX=0
 
 PRINT_FREQUENCY=100000
-
-force_end_traceback=False
-reaches = {}
-counterexamples = []
-num_satstates = 0
-state_ids = {}
-all_states = []
-
-all_transitions = []
 
 class Entry:
 	def __init__(self, col : int, val : float):
@@ -109,47 +98,30 @@ class RandomAccessSparseMatrixBuilder:
 			max_rate = max_entry.val
 			assert(self.exit_rates[i] >= max_rate)
 
-def reset():
-	# global DESIRED_NUMBER_COUNTEREXAMPLES
-	global reaches
-	global counterexamples
-	global num_satstates
-	global state_ids
-	global all_states
-	num_satstates = 0
-	counterexamples = []
-	reaches = {}
-	state_ids = {} # tuple : int
-	all_states = []
-
 def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None):
-	reset()
 	State.initialize_static_vars(crn, dep)
-	global DESIRED_NUMBER_STATES
-	global backward_pointers
-	global num_satstates
-	global force_end_traceback
-	global ABSORBING_INDEX
-	global all_states
+	state_ids = {}
 	# Add the absorbing state
 	matrixBuilder = RandomAccessSparseMatrixBuilder()
 	last_index = ABSORBING_INDEX + 1
 	all_states.append(None)
 	# Other stuff
-	DESIRED_NUMBER_STATES = number
 	boundary = crn.boundary
-	num_explored = 0
 	sat_states = []
+	all_states = []
 	# Min queue
 	pq = queue.PriorityQueue()
 	curr_state = None
+	# Create and enqueue
 	init_state = crn.init_state
-	reaches[tuple(init_state)] = 1.0
 	init_state = State(init_state, last_index)
 	all_states.append(init_state)
 	pq.put((init_state))
 	last_index += 1
 	deadlock_idxs = [0]
+	# The number of explored and satisfying states
+	num_satstates = 0
+	num_explored = 0
 	while (not pq.empty()) and num_satstates < number:
 		num_explored += 1
 		if num_explored % PRINT_FREQUENCY == 0:
@@ -252,7 +224,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	model = stormpy.storage.SparseCtmc(components)
 	print(model)
 	print(f"Matrix built (size {matrixBuilder.size()})")
-	print(f"Checking model with formula {chk_property}...")
+	print(f"Checking model with formula `{chk_property}`")
 	prop = stormpy.parse_properties(chk_property)[0] # stormpy.Property("Lower Bound", )
 	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
 	assert(result.min >= 0.0 and result.max <= 1.0)
