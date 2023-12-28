@@ -16,6 +16,7 @@ ABSORBING_INDEX=0
 PRINT_FREQUENCY=100000
 
 all_states = []
+state_ids = {}
 
 class Entry:
 	def __init__(self, col : int, val : float):
@@ -102,6 +103,7 @@ class RandomAccessSparseMatrixBuilder:
 
 def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None):
 	global all_states
+	global state_ids
 	State.initialize_static_vars(crn, dep)
 	state_ids = {}
 	all_states = []
@@ -200,12 +202,26 @@ def sanity_check():
 	print("done.")
 
 def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, deadlock_idxs : list, time_bound : int):
+	global state_ids
 	# First, connect all terminal states to absorbing
 	global all_states
 	for state in all_states[1::]:
 		if state.perimeter:
-			matrixBuilder.add_next_value(state.idx, 0, 1.0)
-			matrixBuilder.add_exit_rate(state.idx, 1.0)
+			# Expand the state and create transitions ONLY TO EXISTING STATES
+			successors, total_exit_rate = state.successors()
+			total_full_rate = state.get_total_outgoing_rate()
+			# states not expanded will go to the absorbing state
+			rate_to_abs = total_full_rate - total_exit_rate
+			for s, rate in successors:
+				stup = tuple(s.vec)
+				if stup in state_ids:
+					next_idx = state_ids[stup]
+					matrixBuilder.add_next_value(state.idx, next_idx, rate)
+				else:
+					rate_to_abs += rate
+			if rate_to_abs > 0.0:
+				matrixBuilder.add_next_value(state.idx, 0, rate_to_abs)
+			matrixBuilder.add_exit_rate(state.idx, total_full_rate)
 	matrix = matrixBuilder.build()
 	matrixBuilder.assert_all_entries_correct()
 	labeling = StateLabeling(matrixBuilder.size())

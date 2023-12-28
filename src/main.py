@@ -61,7 +61,7 @@ def subspace_priority_solver(filename, num, time_bound, agnostic=False):
 if __name__=="__main__":
 	parser = argparse.ArgumentParser(
 		prog="wayfarer"
-		, description="Wayfarer is a heuristic counterexample generator compatible with RAGTIMER files"
+		, description="wayfarer is a heuristic counterexample generator compatible with RAGTIMER files"
 		, epilog="Developed at USU")
 	parser.add_argument("-r", "--ragtimer", default=None,
 			help="The name of the .ragtimer file to check")
@@ -82,6 +82,8 @@ if __name__=="__main__":
 			+ "If this is not provided, checks `P=? [ true U \"satisfy\" ]`")
 	parser.add_argument("-a", "--agnostic", action="store_true",
 			help="Initial-state agnostic. Will construct dependency graph with ALL reactions that produce or consume a species, even if enough of that species exists in the initial state (this may help increase probability bounds).")
+	parser.add_argument("-R", "--random_freq", default=None,
+			help="When set, the frequency of iterations in which a state's ENTIRE catalog of enabled reactions are expanded, rather than just those in the smallest subspace which contains it. This may cause it to \"jump\" to a path with either more or less probability than the current one.")
 	args = parser.parse_args()
 	store_traces = args.traces
 	if args.ragtimer is None:
