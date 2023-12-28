@@ -136,11 +136,9 @@ class DepGraph:
 		'''
 		Recursive function that creates the graph
 		'''
-		print(f"Called create_graph with change {change.T}")
 		# Decreases the values in the change vector
 		successors = []
 		hashable_change = tuple([float(f) for f in change])
-		# print(hashable_change)
 		if hashable_change in self.visited_changes:
 			return
 		self.visited_changes[hashable_change] = True
@@ -179,11 +177,9 @@ class DepGraph:
 		# If c is all zeros, we don't recurse any further
 		for c in change:
 			species = self.species_names[species_idx]
-			# print(species)
 			if c > 0:
 				# TODO: create a new mask where the current index is zero and the (current) producer index is one
 				# We need a producer reaction
-				# print(self.producers)
 				if not species in self.producers:
 					continue
 				if self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0): # max(self.desired_values[species_idx], 0):
@@ -201,7 +197,6 @@ class DepGraph:
 					successors.append(Node(producer, next_reactions, level + 1, count))
 			elif c < 0:
 				# We need a consumer reaction
-				# print(self.consumers)
 				if not species in self.consumers:
 					continue
 				if self.init_state[species_idx] <= c + max(self.desired_values[species_idx], 0): # max(self.desired_values[species_idx], 0):
