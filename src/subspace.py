@@ -16,7 +16,16 @@ from crn import *
 DONT_CARE = -1
 
 class Subspace:
-	mask = None # (target > DONT_CARE).astype(float)
+	mask = None      # (target > DONT_CARE).astype(float)
+	# This parillelipiped is the piped matrix containing the normalized
+	# reaction vector scaled by the reaction rate, assuming a constant rate.
+	# Then, piped_inv is the inverse of that Piped matrix, computed only once
+	# for brevity and optimization.
+	piped = None     # Stored for completeness
+	piped_inv = None # Assumes that piped ** -1 = piped_inv
+	def initialize_piped(piped_matrix : np.matrix) -> None:
+		Subspace.piped = piped_matrix
+		Subspace.piped_inv = np.linalg.pinv(piped_matrix)
 	# Type of elements in transitions: crn.Transition
 	def __init__(self, transitions, excluded_transitions, last_layer = None):
 		'''
@@ -69,11 +78,19 @@ class Subspace:
 	# @Pure
 	def norm(self, vec): # -> float:
 		'''
+		Has two behaviors:
+
+		First:
 		Computes the norm of a vector, only accounting for species in the CRN that
 		aren't "Don't care" (value -1)
+
+		Second:
+		Computes the scaled norm in the piped-space. See the comments above Subspace.piped
 		'''
 		# Requires(len(vec) == len(Subspace.mask))
 		# Ensures(Result() >= 0.0)
+		if Subspace.piped_inv is not None:
+			return float(np.linalg.norm(Subspace.piped_inv * vec))
 		return float(np.linalg.norm(np.multiply(vec, Subspace.mask)))
 
 	# @Pure

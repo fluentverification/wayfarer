@@ -4,6 +4,7 @@ from distance import *
 from counterexample import *
 from parser import *
 from solver import *
+from subspace import Subspace
 
 import argparse
 import time
@@ -48,11 +49,15 @@ def subspace_priority(filename, num):
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 
-def subspace_priority_solver(filename, num, time_bound, agnostic=False):
+def subspace_priority_solver(filename, num, time_bound, agnostic=False, piped=False):
 	dep, crn = parse_dependency_ragtimer(filename, agnostic=agnostic)
 	print("========================================================")
 	print("Targeted Exploration (Subspace - With Solver)")
 	print("========================================================")
+	if piped:
+		print("Info: Norms during on-the-fly exploration will be scaled by the \"flow\" of the CRN via a \"piped\" matrix.")
+		piped_matrix = create_piped(crn)
+		Subspace.initialize_piped(piped_matrix)
 	start_time = time.time()
 	min_probability_subsp(crn, dep, number=num, print_when_done=True, write_when_done=store_traces, time_bound=time_bound)
 	end_time = time.time()
@@ -84,6 +89,8 @@ if __name__=="__main__":
 			help="Initial-state agnostic. Will construct dependency graph with ALL reactions that produce or consume a species, even if enough of that species exists in the initial state (this may help increase probability bounds).")
 	parser.add_argument("-R", "--random_freq", default=None,
 			help="When set, the frequency of iterations in which a state's ENTIRE catalog of enabled reactions are expanded, rather than just those in the smallest subspace which contains it. This may cause it to \"jump\" to a path with either more or less probability than the current one.")
+	parser.add_argument("-P", "--piped", action="store_true",
+			help="Use a \"piped\" matrix based on the normalized update vectors of the available transitions scaled by their rates. Assumes constant rates as rates are evaluated at the initial state for the matrix")
 	args = parser.parse_args()
 	store_traces = args.traces
 	if args.ragtimer is None:
@@ -99,7 +106,7 @@ if __name__=="__main__":
 			print(f"Time bound {args.time} is invalid. Will ignore.")
 		elif args.time is not None:
 			t = int(args.time)
-		subspace_priority_solver(args.ragtimer, num, time_bound=t, agnostic=args.agnostic)
+		subspace_priority_solver(args.ragtimer, num, time_bound=t, agnostic=args.agnostic, piped=args.piped)
 
 	if args.primitive:
 		basic_priority(args.ragtimer, num)
