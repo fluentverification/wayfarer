@@ -232,6 +232,8 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	print(f"Matrix built (size {matrixBuilder.size()})")
 	print(f"Checking model with formula `{chk_property}`")
 	prop = stormpy.parse_properties(chk_property)[0] # stormpy.Property("Lower Bound", )
+	env = stormpy.Environment()
+	env.solver_environment.native_solver_environment.precision = stormpy.Rational(1e-100)
 	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
 	assert(result.min >= 0.0 and result.max <= 1.0)
 	print(f"Pmin = {result.at(1)}")
