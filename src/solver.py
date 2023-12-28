@@ -99,6 +99,8 @@ class RandomAccessSparseMatrixBuilder:
 				continue
 			max_entry = max(self.from_list[i])
 			max_rate = max_entry.val
+			if not self.exit_rates[i] >= max_rate:
+				print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
 			assert(self.exit_rates[i] >= max_rate)
 
 def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None):
@@ -208,12 +210,12 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	for state in all_states[1::]:
 		if state.perimeter:
 			# Expand the state and create transitions ONLY TO EXISTING STATES
-			successors, total_exit_rate = state.successors()
+			successors, total_exit_rate = state.successors(True)
 			total_full_rate = state.get_total_outgoing_rate()
 			# states not expanded will go to the absorbing state
 			rate_to_abs = total_full_rate - total_exit_rate
 			for s, rate in successors:
-				stup = tuple(s.vec)
+				stup =s #tuple(s.vec)
 				if stup in state_ids:
 					next_idx = state_ids[stup]
 					matrixBuilder.add_next_value(state.idx, next_idx, rate)

@@ -169,7 +169,7 @@ class State:
 				total_rate += t.rate_finder(vec)
 		return total_rate
 
-	def successors(self): # -> tuple:
+	def successors(self, only_tuples=False): # -> tuple:
 		'''
 		Only returns the successors using the vectors in the dependency graph
 		that get us closer to the target.
@@ -194,14 +194,17 @@ class State:
 		for t in update_vectors:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
+				rate = t.rate_finder(self.vec)
+				total_outgoing_rate += rate
+				if only_tuples:
+					succ.append((tuple(self.vec + t.vector), rate))
+					continue
 				# print("enabled")
 				# print("Update", t.vector)
 				next_state = State(self.vec + t.vector)
 				# The rate finder works on the current state, not the next
-				rate = t.rate_finder(self.vec)
 				# print("vec", self.vec)
 				# print("new vec", next_state.vec)
-				total_outgoing_rate += rate
 				# Due to the cycle-free nature of the dependency graph, we
 				# can ignore successors with a higher distance if both the
 				# current state and successor have order 0 (are in the last subspace)
