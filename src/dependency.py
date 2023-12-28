@@ -154,7 +154,7 @@ class DepGraph:
 				if not species in self.producers:
 					print(f"Unable to continue this path to satisfiability! (This is not an error): produce {species}")
 					continue
-				if self.init_state[species_idx] >= c: # 0:
+				if self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0): # 0:
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
@@ -166,7 +166,7 @@ class DepGraph:
 				if not species in self.consumers:
 					print(f"Unable to continue this path to satisfiability! (This is not an error): consume {species}")
 					continue
-				if self.init_state[species_idx] <= c:
+				if self.init_state[species_idx] <= c + max(self.desired_values[species_idx], 0):
 					continue
 				spec_consumers = self.consumers[species]
 				for consumer in spec_consumers:
@@ -186,7 +186,7 @@ class DepGraph:
 				# print(self.producers)
 				if not species in self.producers:
 					continue
-				if self.init_state[species_idx] >= c: # max(self.desired_values[species_idx], 0):
+				if self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0): # max(self.desired_values[species_idx], 0):
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
@@ -204,7 +204,7 @@ class DepGraph:
 				# print(self.consumers)
 				if not species in self.consumers:
 					continue
-				if self.init_state[species_idx] <= c: # max(self.desired_values[species_idx], 0):
+				if self.init_state[species_idx] <= c + max(self.desired_values[species_idx], 0): # max(self.desired_values[species_idx], 0):
 					continue
 
 				spec_consumers = self.consumers[species]
