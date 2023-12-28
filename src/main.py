@@ -48,8 +48,8 @@ def subspace_priority(filename, num):
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 
-def subspace_priority_solver(filename, num, time_bound):
-	dep, crn = parse_dependency_ragtimer(filename)
+def subspace_priority_solver(filename, num, time_bound, agnostic=False):
+	dep, crn = parse_dependency_ragtimer(filename, agnostic=agnostic)
 	print("========================================================")
 	print("Targeted Exploration (Subspace - With Solver)")
 	print("========================================================")
@@ -80,6 +80,8 @@ if __name__=="__main__":
 	parser.add_argument("-T", "--time", default=None,
 			help="If doing CTMC analysis, the time bound on the eventually property. "
 			+ "If this is not provided, checks `P=? [ true U \"satisfy\" ]`")
+	parser.add_argument("-a", "--agnostic", action="store_true",
+			help="Initial-state agnostic. Will construct dependency graph with ALL reactions that produce or consume a species, even if enough of that species exists in the initial state (this may help increase probability bounds).")
 	args = parser.parse_args()
 	store_traces = args.traces
 	if args.ragtimer is None:
@@ -95,7 +97,7 @@ if __name__=="__main__":
 			print(f"Time bound {args.time} is invalid. Will ignore.")
 		elif args.time is not None:
 			t = int(args.time)
-		subspace_priority_solver(args.ragtimer, num, time_bound=t)
+		subspace_priority_solver(args.ragtimer, num, time_bound=t, agnostic=args.agnostic)
 
 	if args.primitive:
 		basic_priority(args.ragtimer, num)

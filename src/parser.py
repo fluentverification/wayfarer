@@ -67,8 +67,8 @@ def parse_ragtimer(filename):
 		transitions = [create_transition(line, species_idxes) for line in lines[3:]]
 		return Crn(transitions, boundary, init_state)
 
-def parse_dependency_ragtimer(filename):
+def parse_dependency_ragtimer(filename, agnostic=False):
 	with open(filename, 'r') as rag:
 		lines = rag.readlines()
 		assert(len(lines) >= 4)
-		return DepGraph(lines), parse_ragtimer(filename)
+		return DepGraph(lines, agnostic=agnostic), parse_ragtimer(filename)

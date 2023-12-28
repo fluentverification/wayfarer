@@ -111,7 +111,8 @@ class DepGraph:
 			self.reactions.append(r)
 		self.graph_root = self.create_graph(desired_values, init_state)
 
-	def __init__(self, ragtimer_lines):
+	def __init__(self, ragtimer_lines, agnostic=False):
+		self.agnostic=agnostic
 		self.producers = {}
 		self.consumers = {}
 		self.reaction_levels = []
@@ -152,7 +153,7 @@ class DepGraph:
 				if not species in self.producers:
 					print(f"Unable to continue this path to satisfiability! (This is not an error): produce {species}")
 					continue
-				if self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0): # 0:
+				if not self.agnostic and self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0): # 0:
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
@@ -164,7 +165,7 @@ class DepGraph:
 				if not species in self.consumers:
 					print(f"Unable to continue this path to satisfiability! (This is not an error): consume {species}")
 					continue
-				if self.init_state[species_idx] <= c + max(self.desired_values[species_idx], 0):
+				if not self.agnostic and self.init_state[species_idx] <= c + max(self.desired_values[species_idx], 0):
 					continue
 				spec_consumers = self.consumers[species]
 				for consumer in spec_consumers:
@@ -182,7 +183,7 @@ class DepGraph:
 				# We need a producer reaction
 				if not species in self.producers:
 					continue
-				if self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0): # max(self.desired_values[species_idx], 0):
+				if not self.agnostic and self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0): # max(self.desired_values[species_idx], 0):
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
@@ -199,7 +200,7 @@ class DepGraph:
 				# We need a consumer reaction
 				if not species in self.consumers:
 					continue
-				if self.init_state[species_idx] <= c + max(self.desired_values[species_idx], 0): # max(self.desired_values[species_idx], 0):
+				if not self.agnostic and self.init_state[species_idx] <= c + max(self.desired_values[species_idx], 0): # max(self.desired_values[species_idx], 0):
 					continue
 
 				spec_consumers = self.consumers[species]
