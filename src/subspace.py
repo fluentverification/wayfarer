@@ -210,15 +210,18 @@ class State:
 		self.perimeter = False
 		succ = []
 		total_outgoing_rate = 0.0
-        # TODO: why is this IndexError'ing on some models?
-		subspace = State.subspaces[max(0, len(State.subspaces) - (self.order + 2))]
-		# print(f"Successors from subspace '{subspace}'")
+		subspace = None
 		update_vectors = None
-		if all_successors:
-			# If the CRN variable is passed into get_update_vectors, all successors are returned
-			update_vectors = subspace.get_update_vectors(State.crn)
+		if len(State.subspaces) == 0:
+			update_vectors = State.crn.transitions
 		else:
-			update_vectors = subspace.get_update_vectors() # State.crn)
+			# TODO: why is this IndexError'ing on some models?
+			subspace = State.subspaces[max(0, len(State.subspaces) - (self.order + 2))]
+			if all_successors:
+				# If the CRN variable is passed into get_update_vectors, all successors are returned
+				update_vectors = subspace.get_update_vectors(State.crn)
+			else:
+				update_vectors = subspace.get_update_vectors() # State.crn)
 		# print(f"Update vectors {[str(vec) for vec in update_vectors]}")
 		for t in update_vectors:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
@@ -238,17 +241,18 @@ class State:
 				# can ignore successors with a higher distance if both the
 				# current state and successor have order 0 (are in the last subspace)
 				# Note: this only works if the last subspace has rank 1
-				if subspace.rank == 1 and self.order == 0 and \
+				if subspace is not None and subspace.rank == 1 and self.order == 0 and \
 					next_state.epsilon[len(next_state.epsilon) - 1] > self.epsilon[len(self.epsilon) - 1]:
 					continue
 				succ.append((next_state, rate))
 			# else:
 			# 	print("not enabled")
 		# Compute this rate using ALL transitions, not just the ones we use for successors
-		for t in subspace.excluded_transitions:
-			if t.enabled(self.vec):
-				rate = t.rate_finder(self.vec)
-				total_outgoing_rate += rate
+		if subspace is not None:
+			for t in subspace.excluded_transitions:
+				if t.enabled(self.vec):
+					rate = t.rate_finder(self.vec)
+					total_outgoing_rate += rate
 		# print([s[0].vec for s in succ])
 		# print(f"For state {self.vec}, successors are {[state.vec for state, rate in succ]}")
 		return succ, total_outgoing_rate
