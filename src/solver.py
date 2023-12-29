@@ -103,7 +103,7 @@ class RandomAccessSparseMatrixBuilder:
 				print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
 			assert(self.exit_rates[i] >= max_rate)
 
-def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None):
+def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False):
 	global all_states
 	global state_ids
 	State.initialize_static_vars(crn, dep)
@@ -149,7 +149,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 
 		# Total expanded rate: the rate of transitions we EXPANDED in the graph
 		# Total full rate: the total rate of all POSSIBLE enabled transitions from this state.
-		successors, total_expanded_rate = curr_state_data.successors()
+		successors, total_expanded_rate = curr_state_data.successors(all_successors=expand_all_states)
 		total_full_rate = curr_state_data.get_total_outgoing_rate()
 		assert(total_full_rate >= total_expanded_rate)
 		if len(successors) == 0:

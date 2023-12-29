@@ -186,7 +186,7 @@ class State:
 				total_rate += t.rate_finder(vec)
 		return total_rate
 
-	def successors(self, only_tuples=False): # -> tuple:
+	def successors(self, only_tuples : bool = False, all_successors : bool = False): # -> tuple:
 		'''
 		Only returns the successors using the vectors in the dependency graph
 		that get us closer to the target.
@@ -206,7 +206,12 @@ class State:
         # TODO: why is this IndexError'ing on some models?
 		subspace = State.subspaces[max(0, len(State.subspaces) - (self.order + 2))]
 		# print(f"Successors from subspace '{subspace}'")
-		update_vectors = subspace.get_update_vectors() # State.crn)
+		update_vectors = None
+		if all_successors:
+			# If the CRN variable is passed into get_update_vectors, all successors are returned
+			update_vectors = subspace.get_update_vectors(State.crn)
+		else:
+			update_vectors = subspace.get_update_vectors() # State.crn)
 		# print(f"Update vectors {[str(vec) for vec in update_vectors]}")
 		for t in update_vectors:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
