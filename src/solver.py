@@ -63,15 +63,17 @@ class RandomAccessSparseMatrixBuilder:
 		for row in range(len(self.from_list)):
 			self.from_list[row].sort()
 			if len(self.from_list[row]) == 0:
-				matrix_builder.add_next_value(row, row, 1.0)
+				matrix_builder.add_next_value(row, row, 0.0)
+				self.exit_rates[row] = 0.0
 			for entry in self.from_list[row]:
 				col = entry.col
 				val = entry.val
 				if row == col:
 					assert(len(self.from_list[row]) == 1)
-					matrix_builder.add_next_value(row, col, 1.0)
+					matrix_builder.add_next_value(row, col, 0.0)
 					break
 				matrix_builder.add_next_value(row, col, val)
+			matrix_builder.add_next_value(row, row, -self.exit_rates[row])
 		return matrix_builder
 
 	def build(self):
@@ -141,9 +143,9 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			num_satstates += 1
 			sat_states.append(curr_state_data.idx)
 			# We will create a self-loop later, so declare the total exit rate as 1.0
-			matrixBuilder.add_exit_rate(curr_state_data.idx, 1.0)
-			matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
-			deadlock_idxs.append(curr_state_data.idx)
+			matrixBuilder.add_exit_rate(curr_state_data.idx, 0.0)
+			matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 0.0)
+			# deadlock_idxs.append(curr_state_data.idx)
 			curr_state_data.perimeter = False
 			continue
 
@@ -155,12 +157,13 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 		if len(successors) == 0:
 			print("No successors")
 			# Introduce a self-loop
-			matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
+			# matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
 			continue
 		# If this is true there are some transitions we didn't expand that we must lead
 		# to the absorbing state. We do this since we only take reactions in that subspace
 		if total_full_rate > total_expanded_rate:
 			matrixBuilder.add_next_value(curr_state_data.idx, 0, total_full_rate - total_expanded_rate)
+			# print(f"Adding absorbing transition {curr_state_data.idx} of rate {total_full_rate - total_expanded_rate}")
 		matrixBuilder.add_exit_rate(curr_state_data.idx, total_full_rate)
 		for s, rate in successors:
 			next_state = s.vec
@@ -182,6 +185,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 				s = all_states[state_ids[next_state_tuple]]
 			assert(s.idx is not None)
 			# Place the transition in the matrix
+			# print(f"Adding transition {curr_state_data.idx} to {s.idx} of rate {rate}")
 			matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
 	if print_when_done:
 		print(f"Explored {len(matrixBuilder.from_list)} states (expanded {num_explored}). Found {num_satstates} satisfying states.")
@@ -218,11 +222,13 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 				stup =s #tuple(s.vec)
 				if stup in state_ids:
 					next_idx = state_ids[stup]
+					print(f"Adding transition {state.idx} to {next_idx} of rate {rate}")
 					matrixBuilder.add_next_value(state.idx, next_idx, rate)
 				else:
 					rate_to_abs += rate
 			if rate_to_abs > 0.0:
 				matrixBuilder.add_next_value(state.idx, 0, rate_to_abs)
+			print(f"Creating transition to absorbing from {state.idx} of {total_full_rate}")
 			matrixBuilder.add_exit_rate(state.idx, total_full_rate)
 	matrix = matrixBuilder.build()
 	matrixBuilder.assert_all_entries_correct()
@@ -239,10 +245,12 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	labeling.add_label("deadlock")
 	for idx in deadlock_idxs:
 		labeling.add_label_to_state("deadlock", idx)
-	components = SparseModelComponents(matrix, labeling, {}, rate_transitions=True)
+	# print(matrix)
+	components = SparseModelComponents(matrix, state_labeling=labeling, rate_transitions=True)
 	prop_bound = "" if time_bound is None else f"[0, {time_bound}]"
 	chk_property = f"P=? [ true U{prop_bound} \"satisfy\" ]"
-	exit_rates = [rate if rate is not None else 1.0 for rate in matrixBuilder.exit_rates]
+	exit_rates = [rate if rate is not None else 0.0 for rate in matrixBuilder.exit_rates]
+	# print(exit_rates)
 	components.exit_rates = exit_rates
 	# print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
 	model = stormpy.storage.SparseCtmc(components)
@@ -252,6 +260,6 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	prop = stormpy.parse_properties(chk_property)[0] # stormpy.Property("Lower Bound", )
 	env = stormpy.Environment()
 	env.solver_environment.native_solver_environment.precision = stormpy.Rational(1e-100)
-	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
+	result = stormpy.check_model_sparse(model, prop, only_initial_states=True, environment=env)
 	assert(result.min >= 0.0 and result.max <= 1.0)
 	print(f"Pmin = {result.at(1)}")
