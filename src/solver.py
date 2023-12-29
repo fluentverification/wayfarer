@@ -103,10 +103,10 @@ class RandomAccessSparseMatrixBuilder:
 				print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
 			assert(self.exit_rates[i] >= max_rate)
 
-def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False):
+def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False, single_order=False):
 	global all_states
 	global state_ids
-	State.initialize_static_vars(crn, dep)
+	State.initialize_static_vars(crn, dep, single_order=single_order)
 	state_ids = {}
 	all_states = []
 	# Add the absorbing state

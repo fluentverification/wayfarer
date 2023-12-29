@@ -26,6 +26,26 @@ class Subspace:
 	def initialize_piped(piped_matrix : np.matrix) -> None:
 		Subspace.piped = piped_matrix
 		Subspace.piped_inv = np.linalg.pinv(piped_matrix)
+
+	# @Pure
+	def norm(vec): # -> float:
+		'''
+		Has two behaviors:
+
+		First:
+		Computes the norm of a vector, only accounting for species in the CRN that
+		aren't "Don't care" (value -1)
+
+		Second:
+		Computes the scaled norm in the piped-space. See the comments above Subspace.piped
+		'''
+		# Requires(len(vec) == len(Subspace.mask))
+		# Ensures(Result() >= 0.0)
+		if Subspace.piped_inv is not None:
+			return float(np.linalg.norm(Subspace.piped_inv * vec))
+		return float(np.linalg.norm(np.multiply(vec, Subspace.mask)))
+
+
 	# Type of elements in transitions: crn.Transition
 	def __init__(self, transitions, excluded_transitions, last_layer = None):
 		'''
@@ -76,28 +96,11 @@ class Subspace:
 		return np.linalg.matrix_rank(np.block([self.P, other.P])) == self.rank
 
 	# @Pure
-	def norm(self, vec): # -> float:
-		'''
-		Has two behaviors:
-
-		First:
-		Computes the norm of a vector, only accounting for species in the CRN that
-		aren't "Don't care" (value -1)
-
-		Second:
-		Computes the scaled norm in the piped-space. See the comments above Subspace.piped
-		'''
-		# Requires(len(vec) == len(Subspace.mask))
-		# Ensures(Result() >= 0.0)
-		if Subspace.piped_inv is not None:
-			return float(np.linalg.norm(Subspace.piped_inv * vec))
-		return float(np.linalg.norm(np.multiply(vec, Subspace.mask)))
-
-	# @Pure
 	def dist(self, vec): # -> float:
 		# Requires(len(vec) == len(Subspace.mask))
 		# Ensures(Result() >= 0.0)
-		return self.norm(self.P * vec - vec)
+		return Subspace.norm(self.P * vec - vec)
+
 
 	def __str__(self):
 		return f"Subspace with basis reactions {[str(t) for t in self.transitions]}"
@@ -113,8 +116,12 @@ class State:
 	init : np.matrix = None
 	crn : Crn = None
 	# @staticmethod
-	def initialize_static_vars(crn, dep):
-		State.subspaces = dep.create_subspaces(crn)
+	def initialize_static_vars(crn, dep, single_order=False):
+		if not single_order:
+			State.subspaces = dep.create_subspaces(crn)
+		else:
+			# Do not create subspaces. Will only compare actual euclidian distance
+			State.subspaces = []
 		State.init = np.matrix(crn.init_state).T
 		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
 		Subspace.mask = np.matrix([b.to_mask() for b in crn.boundary]).T
@@ -157,7 +164,7 @@ class State:
 		# Ensures(type(self.epsilon == list[float]))
 		# Ensures(len(self.epsilon) >= 1)
 		# Ensures(Forall(int, lambda i : (Implies(i > 0 and i < len(State.subspaces), self.epsilon[i] >= self.epsilon[i - 1]))))
-		dist_to_target = State.subspaces[0].norm(self.vecm - State.target)
+		dist_to_target = Subspace.norm(self.vecm - State.target)
 		if dist_to_target == 0.0:
 			self.epsilon : list = [0.0]
 			self.order = -1

@@ -49,7 +49,7 @@ def subspace_priority(filename, num):
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 
-def subspace_priority_solver(filename, num, time_bound, agnostic=False, piped=False, all_expand=False):
+def subspace_priority_solver(filename, num, time_bound, agnostic=False, piped=False, all_expand=False, single_order=False):
 	dep, crn = parse_dependency_ragtimer(filename, agnostic=agnostic)
 	print("========================================================")
 	print("Targeted Exploration (Subspace - With Solver)")
@@ -59,7 +59,7 @@ def subspace_priority_solver(filename, num, time_bound, agnostic=False, piped=Fa
 		piped_matrix = create_piped(crn)
 		Subspace.initialize_piped(piped_matrix)
 	start_time = time.time()
-	min_probability_subsp(crn, dep, number=num, print_when_done=True, write_when_done=store_traces, time_bound=time_bound, expand_all_states=all_expand)
+	min_probability_subsp(crn, dep, number=num, print_when_done=True, write_when_done=store_traces, time_bound=time_bound, expand_all_states=all_expand, single_order=single_order)
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 
@@ -78,6 +78,8 @@ if __name__=="__main__":
 			help="Iterative subspace reduction with traceback")
 	parser.add_argument("-S", "--subspace_with_solver", action="store_true",
 			help="Iterative subspace reduction with CTMC analysis in StormPy")
+	parser.add_argument("-V", "--solver", action="store_true",
+			help="Single order priority with CTMC analysis in StormPy")
 	parser.add_argument("-m", "--random", action="store_true",
 			help="Random exploration")
 	parser.add_argument("-t", "--traces", action="store_true",
@@ -109,6 +111,14 @@ if __name__=="__main__":
 		elif args.time is not None:
 			t = int(args.time)
 		subspace_priority_solver(args.ragtimer, num, time_bound=t, agnostic=args.agnostic, piped=args.piped, all_expand=args.expand_all)
+
+	if args.solver:
+		t = None
+		if args.time is not None and not args.time.isnumeric():
+			print(f"Time bound {args.time} is invalid. Will ignore.")
+		elif args.time is not None:
+			t = int(args.time)
+		subspace_priority_solver(args.ragtimer, num, time_bound=t, agnostic=args.agnostic, piped=args.piped, all_expand=args.expand_all, single_order=True)
 
 	if args.primitive:
 		basic_priority(args.ragtimer, num)
