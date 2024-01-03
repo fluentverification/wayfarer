@@ -16,13 +16,14 @@ from crn import *
 DONT_CARE = -1
 
 class Subspace:
-	mask = None      # (target > DONT_CARE).astype(float)
+	mask : np.matrix = None      # (target > DONT_CARE).astype(float)
+	all_basis : list = []        # Basis vectors to include in ALL subspaces
 	# This parillelipiped is the piped matrix containing the normalized
 	# reaction vector scaled by the reaction rate, assuming a constant rate.
 	# Then, piped_inv is the inverse of that Piped matrix, computed only once
 	# for brevity and optimization.
-	piped = None     # Stored for completeness
-	piped_inv = None # Assumes that piped ** -1 = piped_inv
+	piped = None                 # Stored for completeness
+	piped_inv = None             # Assumes that piped ** -1 = piped_inv
 	def initialize_piped(piped_matrix : np.matrix) -> None:
 		Subspace.piped = piped_matrix
 		Subspace.piped_inv = np.linalg.pinv(piped_matrix)
@@ -61,6 +62,8 @@ class Subspace:
 		self.excluded_transitions = excluded_transitions
 		self.last_layer = last_layer
 		basis_vectors = [np.matrix(t.vector).T for t in transitions]
+		for b in Subspace.all_basis:
+			basis_vectors.append(b)
 		# print(basis_vectors[0])
 		# TODO: make sure we're appending to the right axis
 		A = np.column_stack(basis_vectors) # np.matrix(basis_vectors[0].append(basis_vectors[1:], axis=1))
@@ -88,7 +91,7 @@ class Subspace:
 	# @Pure
 	def contains(self, other, test_vec): # -> bool:
 		# Check if contains
-		# Requires(type(State.init) == np.matrix)
+		# Requires(type(State.offset) == np.matrix)
 		# Requires(len(test_vec) == len(Subspace.mask))
 		# Ensures(Implies(Result(), self.dist(test_vec) >= other.dist(test_vec)))
 		if self.rank < other.rank:
@@ -113,7 +116,7 @@ class State:
 	# A "mask" vector that gives us 1.0's in the species we care about and 0.0s in
 	# the species we don't
 
-	init : np.matrix = None
+	offset : np.matrix = None
 	crn : Crn = None
 	# @staticmethod
 	def initialize_static_vars(crn, dep, single_order=False):
@@ -122,7 +125,7 @@ class State:
 		else:
 			# Do not create subspaces. Will only compare actual euclidian distance
 			State.subspaces = []
-		State.init = np.matrix(crn.init_state).T
+		State.offset = dep.offset
 		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
 		Subspace.mask = np.matrix([b.to_mask() for b in crn.boundary]).T
 		State.crn = crn
@@ -140,15 +143,15 @@ class State:
 		4. epsilon (type list(int)) : The list of nonzero subspace distances, starting
 		with the largest and working towards the smallest
 		'''
-		# Requires(type(State.init) == np.matrix)
+		# Requires(type(State.offset) == np.matrix)
 		# Requires(type(State.target) == np.matrix)
 		# Requires(type(State.subspaces) == List[Subspace])
-		# # Requires(Forall(int, lambda i : Implies(i > 0 and i < len(State.subspaces), State.subspaces[i].contains(State.subspaces[i - 1], State.init))))
+		# # Requires(Forall(int, lambda i : Implies(i > 0 and i < len(State.subspaces), State.subspaces[i].contains(State.subspaces[i - 1], State.offset))))
 		# Ensures(self.order >= -1)
 		# Ensures(len(self.epsilon) == len(State.subspaces) + 1)
 		self.vec = vec
 		self.vecm = np.matrix(vec).T
-		self.adj = self.vecm - State.init
+		self.adj = self.vecm - State.offset
 		self.order : int = 0
 		self.__compute_order()
 		self.perimeter = True
@@ -158,7 +161,7 @@ class State:
 		'''
 		Computes the order and epsilon vector of the state
 		'''
-		# Requires(type(State.init) == np.matrix)
+		# Requires(type(State.offset) == np.matrix)
 		# Requires(type(State.target) == np.matrix)
 		# Ensures(type(self.order) == int and self.order >= -1)
 		# Ensures(type(self.epsilon == list[float]))
@@ -198,7 +201,7 @@ class State:
 		Only returns the successors using the vectors in the dependency graph
 		that get us closer to the target.
 		'''
-		# Requires(type(State.init) == np.matrix)
+		# Requires(type(State.offset) == np.matrix)
 		# Requires(type(State.target) == np.matrix)
 		# Ensures(type(Result()) == tuple)
 		# Ensures(len(Result()) == 2)

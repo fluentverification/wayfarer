@@ -123,6 +123,10 @@ class DepGraph:
 		self.mask = np.matrix([int(int(val.strip()) != -1) for val in ragtimer_lines[2].split("\t")]).T
 		desired_values = np.matrix([int(val.strip()) for val in ragtimer_lines[2].split("\t")]).T
 		self.desired_values = desired_values
+		self.offset = np.multiply(self.desired_values, self.mask)
+		# print(self.offset)
+		self.sat_basis = [np.matrix([float(i == j and self.mask[i][0, 0] == 0) for j in range(len(self.offset))]).T for i in range(len(self.mask))]
+		# print(self.sat_basis)
 		init_state = np.matrix([int(val) for val in ragtimer_lines[1].split("\t")]).T
 		change = np.multiply(desired_values - init_state, self.mask)
 		self.visited_changes = {}
@@ -283,6 +287,7 @@ class DepGraph:
 	def create_subspaces(self, crn):
 		available_reactions = []
 		indecies = []
+		Subspace.all_basis = self.sat_basis
 		for lev_idx in range(len(self.reaction_levels)):
 			level = self.reaction_levels[lev_idx]
 			for reaction in level:
