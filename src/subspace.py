@@ -115,7 +115,7 @@ class State:
 	target : np.matrix = None
 	# A "mask" vector that gives us 1.0's in the species we care about and 0.0s in
 	# the species we don't
-
+	init : np.matrix = None
 	offset : np.matrix = None
 	crn : Crn = None
 	# @staticmethod
@@ -125,6 +125,7 @@ class State:
 		else:
 			# Do not create subspaces. Will only compare actual euclidian distance
 			State.subspaces = []
+		State.init = np.matrix(crn.init_state).T
 		State.offset = dep.offset
 		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
 		Subspace.mask = np.matrix([b.to_mask() for b in crn.boundary]).T
@@ -151,7 +152,7 @@ class State:
 		# Ensures(len(self.epsilon) == len(State.subspaces) + 1)
 		self.vec = vec
 		self.vecm = np.matrix(vec).T
-		self.adj = self.vecm - State.offset
+		self.adj = self.vecm - State.offset - State.init
 		self.order : int = 0
 		self.__compute_order()
 		self.perimeter = True
