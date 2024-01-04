@@ -101,6 +101,11 @@ class Subspace:
 		# Ensures(Result() >= 0.0)
 		return Subspace.norm(self.P * vec - vec)
 
+	def angle(self, vec):
+		proj_vec = self.P * vec
+		cos_theta = np.dot(proj_vec, vec) / (np.linalg.norm(vec) * np.linalg.norm(proj_vec))
+		return np.arccos(cos_theta)
+
 
 	def __str__(self):
 		return f"Subspace with basis reactions {[str(t) for t in self.transitions]}"
@@ -172,7 +177,7 @@ class State:
 		self.epsilon = [dist_to_target]
 		self.order = 0
 		for s in State.subspaces:
-			ep = s.dist(self.adj)
+			ep = s.angle(self.adj)
 			if ep == 0:
 				return
 			self.epsilon.insert(0, ep)
