@@ -62,8 +62,8 @@ class Subspace:
 		self.excluded_transitions = excluded_transitions
 		self.last_layer = last_layer
 		basis_vectors = [np.matrix(t.vector).T for t in transitions]
-		for b in Subspace.all_basis:
-			basis_vectors.append(b)
+		#for b in Subspace.all_basis:
+		#	basis_vectors.append(b)
 		# print(basis_vectors[0])
 		# TODO: make sure we're appending to the right axis
 		A = np.column_stack(basis_vectors) # np.matrix(basis_vectors[0].append(basis_vectors[1:], axis=1))
