@@ -103,7 +103,7 @@ class Subspace:
 
 	def angle(self, vec):
 		proj_vec = self.P * vec
-		cos_theta = np.dot(proj_vec, vec) / (np.linalg.norm(vec) * np.linalg.norm(proj_vec))
+		cos_theta = proj_vec.T * vec / (np.linalg.norm(vec) * np.linalg.norm(proj_vec))
 		return np.arccos(cos_theta)
 
 
