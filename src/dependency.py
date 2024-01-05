@@ -140,7 +140,7 @@ class DepGraph:
 		self.graph_root = self.create_graph(change)
 		self.create_reaction_levels()
 
-	def create_offset_vector(self, sn : Subspace):
+	def create_offset_vector(self, sn : Subspace, s0 : Subspace = None):
 		'''
 		Creates an offset vector f such that if sn (smallest subspace from dep_graph) is represented by
 		C(Sn) f + span(C(Sn)) intersects with span(C(Ss)) + sp (the solution space).
@@ -162,13 +162,17 @@ class DepGraph:
 			f = Az + sa
 			  = A(A^T A)^-1 A^T (-sa) + sa
 			  = (I - A(A^T A)A^-1 A^T)sa
+		This must then be projected onto S0
 		'''
 		sa = self.particular_solution - self.init_state
 		Avecs = self.sat_basis.copy()
 		for t in sn.transitions:
 			Avecs.append(np.matrix(t.vector).T)
 		A = np.column_stack(Avecs)
-		return sa - A * np.linalg.pinv(A.T * A) * A.T * sa
+		offset_nonprojected = sa - A * np.linalg.pinv(A.T * A) * A.T * sa
+		if s0 is None:
+			return offset_nonprojected
+		return s0.P * offset_nonprojected
 
 	def create_graph(self, change, level = 0):
 		'''
