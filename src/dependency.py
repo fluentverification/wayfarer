@@ -122,6 +122,13 @@ class DepGraph:
 		# We want values of zero when we find a -1 and a value of 1 for all others
 		self.mask = np.matrix([int(int(val.strip()) != -1) for val in ragtimer_lines[2].split("\t")]).T
 		desired_values = np.matrix([int(val.strip()) for val in ragtimer_lines[2].split("\t")]).T
+		# The particular solution, except don't cares are -1 rather than 0.
+		# Although desired_values would work as a particular solution purely in vector space, it is not a valid state.
+		self.desired_values = desired_values
+		# The particular solution for the solution space.
+		self.particular_solution = np.multiply(self.desired_values, self.mask)
+		# The basis vectors describing the entire solution space
+		self.sat_basis = [np.matrix([float(i == j and self.mask[i][0, 0] == 0) for j in range(len(self.particular_solution))]).T for i in range(len(self.mask))]
 		self.desired_values = desired_values
 		init_state = np.matrix([int(val) for val in ragtimer_lines[1].split("\t")]).T
 		change = np.multiply(desired_values - init_state, self.mask)
@@ -132,6 +139,36 @@ class DepGraph:
 		# self.produced_species = {}
 		self.graph_root = self.create_graph(change)
 		self.create_reaction_levels()
+
+	def create_offset_vector(self, sn : Subspace):
+		'''
+		Creates an offset vector f such that if sn (smallest subspace from dep_graph) is represented by
+		C(Sn) f + span(C(Sn)) intersects with span(C(Ss)) + sp (the solution space).
+
+		Here's what happens. We set up the equation
+		let sa = sp - s0
+			f + Sn * x = Ss * y + sa (so to find x and y which minimizes f)
+			f = Ss * y - Sn * x + sa
+			  = [Ss -Sn]z + sa (where z = [x^T y^T]^T)
+		let A = [Ss -Sn]
+			f = Az + sa
+		i.e., the closest solution to
+			0 = Az + sa
+			-sa = Az
+		this is a simple least squares minimization problem.
+		let b = -sa = -(sp - s0) = s0 - sp
+			min_z|b - Az|_2
+			z = (A^TA)^-1 A^T b
+			f = Az + sa
+			  = A(A^T A)^-1 A^T (-sa) + sa
+			  = (I - A(A^T A)A^-1 A^T)sa
+		'''
+		sa = self.particular_solution - self.init_state
+		Avecs = self.sat_basis.copy()
+		for t in sn.transitions:
+			Avecs.append(np.matrix(t.vector).T)
+		A = np.column_stack(Avecs)
+		return sa - A * np.linalg.pinv(A.T * A) * A.T * sa
 
 	def create_graph(self, change, level = 0):
 		'''
