@@ -167,9 +167,18 @@ class DepGraph:
 		sa = self.particular_solution - self.init_state
 		Avecs = self.sat_basis.copy()
 		for t in sn.transitions:
-			Avecs.append(np.matrix(t.vector).T)
+			Avecs.append(-np.matrix(t.vector).T)
 		A = np.column_stack(Avecs)
-		offset_nonprojected = sa - A * np.linalg.pinv(A.T * A) * A.T * sa
+		offset_nonprojected = sa - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * sa
+		# Because the pinv is calculated numerically, on some models where we should
+		# get an offset of zero-vector, we get something like [1e-14, 1e-15, ...]. These
+		# perturbations actually affect the search distance, so we will just zero it here.
+		# TODO: how to handle numerical innacuracies in the actual subspace construction?
+		# MAKE SURE TO NOTE THIS IN THE PAPER
+		zeros = np.zeros(offset_nonprojected.shape)
+		if np.isclose(offset_nonprojected, zeros).all():
+			# This also short-circuits the next projection step
+			return zeros
 		if s0 is None:
 			return offset_nonprojected
 		return s0.P * offset_nonprojected
