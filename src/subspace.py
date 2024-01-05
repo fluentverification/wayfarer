@@ -115,6 +115,7 @@ class State:
 
 	init : np.matrix = None
 	crn : Crn = None
+	total_offset : np.matrix = None
 	# @staticmethod
 	def initialize_static_vars(crn, dep, single_order=False):
 		if not single_order:
@@ -126,6 +127,7 @@ class State:
 		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
 		Subspace.mask = np.matrix([b.to_mask() for b in crn.boundary]).T
 		State.crn = crn
+		State.total_offset = State.init - dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1])
 		print(f"{dep}")
 
 	def __init__(self, vec, idx=None):
@@ -148,7 +150,7 @@ class State:
 		# Ensures(len(self.epsilon) == len(State.subspaces) + 1)
 		self.vec = vec
 		self.vecm = np.matrix(vec).T
-		self.adj = self.vecm - State.init
+		self.adj = self.vecm - State.total_offset # State.init
 		self.order : int = 0
 		self.__compute_order()
 		self.perimeter = True
