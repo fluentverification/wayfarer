@@ -4,6 +4,7 @@ import numpy as np
 
 from crn import *
 from subspace import *
+from util import *
 
 class Node:
 	'''
@@ -188,12 +189,20 @@ class DepGraph:
 			# Get a particular vector in both subspaces
 			zp_sec = np.matrix([zp[i, 0] for i in range(M0.shape[1])]).T
 			ip = M0 * zp_sec
-			print(ip)
+			print(AI)
 			# Matrix whose columns are the intersection of the subspace
 			# Use the SVD
-			U, S, V = np.linalg.svd(AI)
-			print(U, S, V)
-			MI = V[np.argwhere(S < 1e-03).flatten()]
+			#U, S, V = np.linalg.svd(AI)
+			#print(U, S, V)
+			MI = []
+			ns = nullspace(AI)#V[np.argwhere(S < 1e-03).flatten()]
+			for col in range(ns.shape[1]):
+				c = ns[:, col]
+				coeffs = np.matrix([c[i, 0] for i in range(M0.shape[1])]).T
+				print(c, coeffs)
+				MI.append(M0 * coeffs)
+				print("==========================================")
+			MI = np.column_stack(MI)
 			print(MI)
 			# Now we have the system Mny + f = ip + MIx, which can be
 			# reconfigured to f = [MI -Mn]v + ip. We can also replace
@@ -213,6 +222,7 @@ class DepGraph:
 			zeros = np.zeros(offset.shape)
 			if np.isclose(offset, zeros).all():
 				# This also short-circuits the next projection step
+				print("Returning zeros")
 				return zeros
 			return offset
 			# TODO: Could do closest int
