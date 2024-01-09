@@ -142,46 +142,74 @@ class DepGraph:
 
 	def create_offset_vector(self, sn : Subspace, s0 : Subspace = None):
 		'''
-		Creates an offset vector f such that if sn (smallest subspace from dep_graph) is represented by
-		C(Sn) f + span(C(Sn)) intersects with span(C(Ss)) + sp (the solution space).
+		Creates an offset vector, f, s.t. f \in S0 and f minimizes the distance from
+		Sn to Ss (the solution space).
 
-		Here's what happens. We set up the equation
-		let sa = sp - s0
-			f + Sn * x = Ss * y + sa (so to find x and y which minimizes f)
-			f = Ss * y - Sn * x + sa
-			  = [Ss -Sn]z + sa (where z = [x^T y^T]^T)
-		let A = [Ss -Sn]
-			f = Az + sa
-		i.e., the closest solution to
-			0 = Az + sa
-			-sa = Az
-		this is a simple least squares minimization problem.
-		let b = -sa = -(sp - s0) = s0 - sp
-			min_z|b - Az|_2
-			z = (A^TA)^-1 A^T b
-			f = Az + sa
-			  = A(A^T A)^-1 A^T (-sa) + sa
-			  = (I - A(A^T A)A^-1 A^T)sa
-		This must then be projected onto S0
+		The process is as follows:
+		1. First we must find an intersection between S0 and Ss.
+		2. Then, we must find the shortest distance from Sn to this intersection
 		'''
 		sa = self.particular_solution - self.init_state
-		Avecs = self.sat_basis.copy()
-		for t in sn.transitions:
-			Avecs.append(-np.matrix(t.vector).T)
-		A = np.column_stack(Avecs)
-		offset_nonprojected = sa - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * sa
-		# Because the pinv is calculated numerically, on some models where we should
-		# get an offset of zero-vector, we get something like [1e-14, 1e-15, ...]. These
-		# perturbations actually affect the search distance, so we will just zero it here.
-		# TODO: how to handle numerical innacuracies in the actual subspace construction?
-		# MAKE SURE TO NOTE THIS IN THE PAPER
-		zeros = np.zeros(offset_nonprojected.shape)
-		if np.isclose(offset_nonprojected, zeros).all():
-			# This also short-circuits the next projection step
-			return zeros
 		if s0 is None:
+			# If this is true we can short circuit knowing that the
+			# shortest distance is contained in S0 already
+			Avecs = self.sat_basis.copy()
+			for t in sn.transitions:
+				Avecs.append(-np.matrix(t.vector).T)
+			A = np.column_stack(Avecs)
+			offset_nonprojected = sa - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * sa
+			# Because the pinv is calculated numerically, on some models where we should
+			# get an offset of zero-vector, we get something like [1e-14, 1e-15, ...]. These
+			# perturbations actually affect the search distance, so we will just zero it here.
+			# TODO: how to handle numerical innacuracies in the actual subspace construction?
+			# MAKE SURE TO NOTE THIS IN THE PAPER
+			zeros = np.zeros(offset_nonprojected.shape)
+			if np.isclose(offset_nonprojected, zeros).all():
+				# This also short-circuits the next projection step
+				return zeros
 			return offset_nonprojected
-		return s0.P * offset_nonprojected
+		else:
+			# We must find a basis and particular vector for the intersection between
+			# S0 and Ss and then find the shortest distance between Sn and that intersection
+			# We would normally set this up by doing [M0 -Ms]z = sp, but we can also do
+			# [Ms -M0]z = -sp
+			AIvecs = self.sat_basis.copy()
+			for t in s0.transitions:
+				AIvecs.append(-np.matrix(t.vector).T)
+			AI = np.column_stack(AIvecs)
+			M0 = np.column_stack(self.sat_basis)
+			# Find a particular solution for z
+			zp = np.linalg.lstsq(AI, -sa)[0]
+			# Get a particular vector in both subspaces
+			zp_sec = np.matrix([zp[i, 0] for i in range(M0.shape[0])]).T
+			ip = M0 * zp_sec
+			# Matrix whose columns are the intersection of the subspace
+			# Use the SVD
+			U, S, V = np.linalg.svd(AI)
+			MI = V[np.argwhere(S < 1e-03).flatten()]
+			# Now we have the system Mny + f = ip + MIx, which can be
+			# reconfigured to f = [MI -Mn]v + ip. We can also replace
+			# Mn with Pn as both are bases for Sn. Let A = [MI -Pn]
+			A = None
+			if len(MI) == 0:
+				A = -sn.P
+			else:
+				A = np.block([MI, -sn.P])
+			# Once again, we use np.linalg.lstsq to find the
+			# smallest possible value for v.
+			# v = np.linalg.lstsq(A, ip)[0]
+			# The offset vector, f = Av + ip
+			# offset = A * v + ip
+			offset = ip - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * ip
+			print(offset)
+			zeros = np.zeros(offset.shape)
+			if np.isclose(offset, zeros).all():
+				# This also short-circuits the next projection step
+				return zeros
+			return offset
+			# TODO: Could do closest int
+			# raise NotImplementedError("Not implemented!")
+		# return s0.P * offset_nonprojected
 
 	def create_graph(self, change, level = 0):
 		'''
