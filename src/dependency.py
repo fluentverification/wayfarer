@@ -183,16 +183,14 @@ class DepGraph:
 				AIvecs.append(-np.matrix(t.vector).T)
 			AI = np.column_stack(AIvecs)
 			M0 = np.column_stack(self.sat_basis)
-			print(M0)
 			# Find a particular solution for z
 			zp = np.linalg.lstsq(AI, -sa)[0]
-			print(zp)
 			# Get a particular vector in both subspaces
 			zp_sec = np.matrix([zp[i, 0] for i in range(M0.shape[1])]).T
 			ip = M0 * zp_sec
+			print(ip)
 			# Matrix whose columns are the intersection of the subspace
 			# Use the SVD
-			print(AI)
 			U, S, V = np.linalg.svd(AI)
 			print(U, S, V)
 			MI = V[np.argwhere(S < 1e-03).flatten()]
