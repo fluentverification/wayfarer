@@ -176,8 +176,10 @@ class DepGraph:
 		else:
 			# If this is true we can short circuit knowing that the
 			# shortest distance is contained in S0 already
-			saP = s0.P * sa
-			Avecs = self.sat_basis.copy()
+			saP = s0.P * self.particular_solution - self.init_state
+			Avecs = []
+			for v in self.sat_basis:
+				Avecs.append(s0.P * v)
 			for t in sn.transitions:
 				Avecs.append(-np.matrix(t.vector).T)
 			A = np.column_stack(Avecs)
