@@ -174,6 +174,26 @@ class DepGraph:
 				return zeros
 			return offset_nonprojected
 		else:
+			# If this is true we can short circuit knowing that the
+			# shortest distance is contained in S0 already
+			saP = s0.P * sa
+			Avecs = self.sat_basis.copy()
+			for t in sn.transitions:
+				Avecs.append(-np.matrix(t.vector).T)
+			A = np.column_stack(Avecs)
+			offset_nonprojected = saP - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * saP
+			print(offset_nonprojected)
+			# Because the pinv is calculated numerically, on some models where we should
+			# get an offset of zero-vector, we get something like [1e-14, 1e-15, ...]. These
+			# perturbations actually affect the search distance, so we will just zero it here.
+			# TODO: how to handle numerical innacuracies in the actual subspace construction?
+			# MAKE SURE TO NOTE THIS IN THE PAPER
+			zeros = np.zeros(offset_nonprojected.shape)
+			if np.isclose(offset_nonprojected, zeros).all():
+				# This also short-circuits the next projection step
+				return zeros
+			return offset_nonprojected
+		'''
 			# We must find a basis and particular vector for the intersection between
 			# S0 and Ss and then find the shortest distance between Sn and that intersection
 			# We would normally set this up by doing [M0 -Ms]z = sp - s0, but we can also do
@@ -183,25 +203,21 @@ class DepGraph:
 			for t in s0.transitions:
 				AIvecs.append(-np.matrix(t.vector).T)
 			AI = np.column_stack(AIvecs)
-			M0 = np.column_stack(self.sat_basis)
+			Ms = np.column_stack(self.sat_basis)
 			# Find a particular solution for z
-			zp = np.linalg.lstsq(AI, -sa)[0]
+			zp = np.linalg.lstsq(AI, -sa, rcond=None)[0]
 			# Get a particular vector in both subspaces
-			zp_sec = np.matrix([zp[i, 0] for i in range(M0.shape[1])]).T
-			ip = M0 * zp_sec
-			print(AI)
+			zp_sec = np.matrix([zp[i, 0] for i in range(Ms.shape[1])]).T
+			ip = Ms * zp_sec
 			# Matrix whose columns are the intersection of the subspace
-			# Use the SVD
-			#U, S, V = np.linalg.svd(AI)
-			#print(U, S, V)
+			print(AI)
 			MI = []
-			ns = nullspace(AI)#V[np.argwhere(S < 1e-03).flatten()]
+			ns = nullspace(AI)
 			for col in range(ns.shape[1]):
 				c = ns[:, col]
-				coeffs = np.matrix([c[i, 0] for i in range(M0.shape[1])]).T
-				print(c, coeffs)
-				MI.append(M0 * coeffs)
-				print("==========================================")
+				# This should use Ms
+				coeffs = np.matrix([c[i, 0] for i in range(Ms.shape[1])]).T
+				MI.append(Ms * coeffs)
 			MI = np.column_stack(MI)
 			print(MI)
 			# Now we have the system Mny + f = ip + MIx, which can be
@@ -209,9 +225,9 @@ class DepGraph:
 			# Mn with Pn as both are bases for Sn. Let A = [MI -Pn]
 			A = None
 			if len(MI) == 0:
-				A = -sn.P
+				A = -sn.M
 			else:
-				A = np.block([MI, -sn.P])
+				A = np.block([MI, -sn.M])
 			# Once again, we use np.linalg.lstsq to find the
 			# smallest possible value for v.
 			# v = np.linalg.lstsq(A, ip)[0]
@@ -228,6 +244,7 @@ class DepGraph:
 			# TODO: Could do closest int
 			# raise NotImplementedError("Not implemented!")
 		# return s0.P * offset_nonprojected
+	'''
 
 	def create_graph(self, change, level = 0):
 		'''
