@@ -193,6 +193,8 @@ class DepGraph:
 			# MAKE SURE TO NOTE THIS IN THE PAPER
 			zeros = np.zeros(offset_nonprojected.shape)
 			if np.isclose(offset_nonprojected, zeros).all():
+				print("Info: offset is zero vector. This means that the smallest subspace already intersects the solution space with no offset.")
+				print("\tThis does NOT mean that the solution space is reachable ONLY FROM THOSE REACTIONS from the initial state.")
 				# This also short-circuits the next projection step
 				return zeros
 			return offset_nonprojected
