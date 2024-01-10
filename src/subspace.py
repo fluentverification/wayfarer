@@ -64,6 +64,7 @@ class Subspace:
 		# print(basis_vectors[0])
 		# TODO: make sure we're appending to the right axis
 		A = np.column_stack(basis_vectors) # np.matrix(basis_vectors[0].append(basis_vectors[1:], axis=1))
+		self.M = A
 		# print(A)
 		# Use the pseudoinverse since with rectangular matrices,
 		# A.T * A is not guaranteed to be invertible. This SHOULD
@@ -115,6 +116,7 @@ class State:
 
 	init : np.matrix = None
 	crn : Crn = None
+	total_offset : np.matrix = None
 	# @staticmethod
 	def initialize_static_vars(crn, dep, single_order=False):
 		if not single_order:
@@ -126,6 +128,14 @@ class State:
 		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
 		Subspace.mask = np.matrix([b.to_mask() for b in crn.boundary]).T
 		State.crn = crn
+		if len(State.subspaces) == 0:
+			State.total_offset = State.init
+		# There is only one subspace so no projection is necessary
+		elif len(State.subspaces) == 1:
+			State.total_offset = State.init - dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1])
+		# Result vector must be projected on s0.P
+		else:
+			State.total_offset = State.init - dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
 		print(f"{dep}")
 
 	def __init__(self, vec, idx=None):
@@ -148,7 +158,7 @@ class State:
 		# Ensures(len(self.epsilon) == len(State.subspaces) + 1)
 		self.vec = vec
 		self.vecm = np.matrix(vec).T
-		self.adj = self.vecm - State.init
+		self.adj = self.vecm - State.total_offset # State.init
 		self.order : int = 0
 		self.__compute_order()
 		self.perimeter = True
