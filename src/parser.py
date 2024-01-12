@@ -48,6 +48,7 @@ def create_transition(transition_line, species_idxes):
 			is_consumer = True
 			break
 		transition_vector[species_idxes[product]] += 1
+	# Is 1.0 iff is reactant
 	rate_mul_vector = np.array([float(elem < 0) for elem in transition_vector])
 	# The rate, from rate constant k and reactants A, B, is k * A^count(A) * B^count(B)
 	rate_finder = lambda state : rate_const * np.prod([state[i] ** rate_mul_vector[i] for i in range(len(rate_mul_vector))])
@@ -59,9 +60,9 @@ def create_transition(transition_line, species_idxes):
 	reactant_idxes = [species_idxes[reactant] for reactant in reactants]
 	# Require all reactants to be strictly greater than zero
 	return Transition(transition_vector
-				   , lambda state : np.all([state[i] > 0 for i in reactant_idxes])
-				   , rate_finder
-				   , tname)
+				, lambda state : np.all([state[i] > 0 for i in reactant_idxes])
+				, rate_finder
+				, tname)
 
 def parse_ragtimer(filename):
 	with open(filename, 'r') as rag:
