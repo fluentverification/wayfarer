@@ -80,13 +80,13 @@ def parse_ragtimer(filename):
 		transitions = [create_transition(line, species_idxes) for line in lines[3:]]
 		return Crn(transitions, boundary, init_state)
 
-def parse_dependency_ragtimer(filename, agnostic=False):
+def parse_dependency_ragtimer(filename: str, agnostic : bool =False):
 	with open(filename, 'r') as rag:
 		lines = rag.readlines()
 		assert(len(lines) >= 4)
 		return DepGraph(lines, agnostic=agnostic), parse_ragtimer(filename)
 
-def create_piped(crn : Crn, use_rc : True):
+def create_piped(crn : Crn, use_rc : bool = False):
 	'''
 	Creates a piped matrix. Assumes that the Crn has constant rates since rates are gleaned
 	from the rate finder at the initial state.

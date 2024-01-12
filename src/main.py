@@ -56,7 +56,7 @@ def subspace_priority_solver(filename, num, time_bound, agnostic=False, piped=Fa
 	print("========================================================")
 	if piped:
 		print("Info: Norms during on-the-fly exploration will be scaled by the \"flow\" of the CRN via a \"piped\" matrix.")
-		piped_matrix = create_piped(crn)
+		piped_matrix = create_piped(crn, use_rate_const)
 		Subspace.initialize_piped(piped_matrix)
 	start_time = time.time()
 	min_probability_subsp(crn, dep, number=num, print_when_done=True, write_when_done=store_traces, time_bound=time_bound, expand_all_states=all_expand, single_order=single_order)
