@@ -23,13 +23,14 @@ class Transition:
 	# vector      #: np.vector
 	# enabled     #: lambda
 	# rate_finder #: lambda
-	def __init__(self, vector, enabled, rate_finder, name=None):
+	def __init__(self, vector, enabled, rate_finder, name=None, rate_constant=None):
 		self.vector = np.array(vector)
 		self.vec_as_mat = np.matrix(vector).T
 		self.enabled_lambda = enabled
 		self.rate_finder = rate_finder
 		self.can_eliminate = False
 		self.name = name
+		self.rate_constant = rate_constant
 
 	def enabled(self, state):
 		return self.enabled_lambda(state)

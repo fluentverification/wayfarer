@@ -49,14 +49,14 @@ def subspace_priority(filename, num):
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 
-def subspace_priority_solver(filename, num, time_bound, agnostic=False, piped=False, all_expand=False, single_order=False):
+def subspace_priority_solver(filename, num, time_bound, agnostic=False, piped=False, all_expand=False, single_order=False, use_rate_const=False):
 	dep, crn = parse_dependency_ragtimer(filename, agnostic=agnostic)
 	print("========================================================")
 	print("Targeted Exploration (Subspace - With Solver)")
 	print("========================================================")
 	if piped:
 		print("Info: Norms during on-the-fly exploration will be scaled by the \"flow\" of the CRN via a \"piped\" matrix.")
-		piped_matrix = create_piped(crn)
+		piped_matrix = create_piped(crn, use_rate_const)
 		Subspace.initialize_piped(piped_matrix)
 	start_time = time.time()
 	min_probability_subsp(crn, dep, number=num, print_when_done=True, write_when_done=store_traces, time_bound=time_bound, expand_all_states=all_expand, single_order=single_order)
@@ -95,6 +95,8 @@ if __name__=="__main__":
 			help="Use a \"piped\" matrix based on the normalized update vectors of the available transitions scaled by their rates. Assumes constant rates as rates are evaluated at the initial state for the matrix")
 	parser.add_argument("-e", "--expand_all", action="store_true",
 			help="When expanding states, expand ALL transitions rather than just those which the dependency graph specifies will get the shortest traces. This may help find higher probability traces.")
+	parser.add_argument("-Q", "--rate_constant", action="store_true",
+			help="Use rate constant in piped method.")
 	args = parser.parse_args()
 	store_traces = args.traces
 	if args.ragtimer is None:
@@ -110,7 +112,13 @@ if __name__=="__main__":
 			print(f"Time bound {args.time} is invalid. Will ignore.")
 		elif args.time is not None:
 			t = int(args.time)
-		subspace_priority_solver(args.ragtimer, num, time_bound=t, agnostic=args.agnostic, piped=args.piped, all_expand=args.expand_all)
+		subspace_priority_solver(args.ragtimer
+						, num
+						, time_bound=t
+						, agnostic=args.agnostic
+						, piped=args.piped
+						, all_expand=args.expand_all
+						, use_rate_const=args.rate_constant)
 
 	if args.solver:
 		t = None
@@ -118,7 +126,14 @@ if __name__=="__main__":
 			print(f"Time bound {args.time} is invalid. Will ignore.")
 		elif args.time is not None:
 			t = int(args.time)
-		subspace_priority_solver(args.ragtimer, num, time_bound=t, agnostic=args.agnostic, piped=args.piped, all_expand=args.expand_all, single_order=True)
+		subspace_priority_solver(args.ragtimer
+						, num
+						, time_bound=t
+						, agnostic=args.agnostic
+						, piped=args.piped
+						, all_expand=args.expand_all
+						, single_order=True
+						, use_rate_const=args.rate_constant)
 
 	if args.primitive:
 		basic_priority(args.ragtimer, num)
