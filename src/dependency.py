@@ -4,6 +4,7 @@ import numpy as np
 
 from crn import *
 from subspace import *
+from util import *
 
 class Node:
 	'''
@@ -128,7 +129,11 @@ class DepGraph:
 		# The particular solution for the solution space.
 		self.particular_solution = np.multiply(self.desired_values, self.mask)
 		# The basis vectors describing the entire solution space
-		self.sat_basis = [np.matrix([float(i == j and self.mask[i][0, 0] == 0) for j in range(len(self.particular_solution))]).T for i in range(len(self.mask))]
+		self.sat_basis = [] # [np.matrix([float(i == j and self.mask[i][0, 0] == 0) for j in range(len(self.particular_solution))]).T for i in range(len(self.mask))]
+		for i in range(len(self.mask)):
+			v = np.matrix([float(i == j and self.mask[i][0, 0] == 0) for j in range(len(self.particular_solution))]).T
+			if (v != 0).any():
+				self.sat_basis.append(v)
 		self.desired_values = desired_values
 		init_state = np.matrix([int(val) for val in ragtimer_lines[1].split("\t")]).T
 		change = np.multiply(desired_values - init_state, self.mask)
@@ -142,37 +147,57 @@ class DepGraph:
 
 	def create_offset_vector(self, sn : Subspace, s0 : Subspace = None):
 		'''
-		Creates an offset vector f such that if sn (smallest subspace from dep_graph) is represented by
-		C(Sn) f + span(C(Sn)) intersects with span(C(Ss)) + sp (the solution space).
+		Creates an offset vector, f, s.t. f \in S0 and f minimizes the distance from
+		Sn to Ss (the solution space).
 
-		Here's what happens. We set up the equation
-		let sa = sp - s0
-			f + Sn * x = Ss * y + sa (so to find x and y which minimizes f)
-			f = Ss * y - Sn * x + sa
-			  = [Ss -Sn]z + sa (where z = [x^T y^T]^T)
-		let A = [Ss -Sn]
-			f = Az + sa
-		i.e., the closest solution to
-			0 = Az + sa
-			-sa = Az
-		this is a simple least squares minimization problem.
-		let b = -sa = -(sp - s0) = s0 - sp
-			min_z|b - Az|_2
-			z = (A^TA)^-1 A^T b
-			f = Az + sa
-			  = A(A^T A)^-1 A^T (-sa) + sa
-			  = (I - A(A^T A)A^-1 A^T)sa
-		This must then be projected onto S0
+		The process is as follows:
+		1. First we must find an intersection between S0 and Ss.
+		2. Then, we must find the shortest distance from Sn to this intersection
 		'''
 		sa = self.particular_solution - self.init_state
-		Avecs = self.sat_basis.copy()
-		for t in sn.transitions:
-			Avecs.append(np.matrix(t.vector).T)
-		A = np.column_stack(Avecs)
-		offset_nonprojected = sa - A * np.linalg.pinv(A.T * A) * A.T * sa
 		if s0 is None:
+			# If this is true we can short circuit knowing that the
+			# shortest distance is contained in S0 already
+			Avecs = self.sat_basis.copy()
+			for t in sn.transitions:
+				Avecs.append(-np.matrix(t.vector).T)
+			A = np.column_stack(Avecs)
+			offset_nonprojected = sa - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * sa
+			# Because the pinv is calculated numerically, on some models where we should
+			# get an offset of zero-vector, we get something like [1e-14, 1e-15, ...]. These
+			# perturbations actually affect the search distance, so we will just zero it here.
+			# TODO: how to handle numerical innacuracies in the actual subspace construction?
+			# MAKE SURE TO NOTE THIS IN THE PAPER
+			zeros = np.zeros(offset_nonprojected.shape)
+			if np.isclose(offset_nonprojected, zeros).all():
+				# This also short-circuits the next projection step
+				return zeros
 			return offset_nonprojected
-		return s0.P * offset_nonprojected
+		else:
+			# In this case, we wish to solve the equation
+			# Snx + s0 = P0(Ssy + sp - s0) + s0 (project the solution space onto the OFFSET S0)
+			# Snx = P0(Ssy + sp - s0)
+			# [Sn -P0Ss]v = P0(sp - s0)
+			saP = s0.P * sa
+			Avecs = []
+			for v in self.sat_basis:
+				Avecs.append(s0.P * v)
+			for t in sn.transitions:
+				Avecs.append(-np.matrix(t.vector).T)
+			A = np.column_stack(Avecs)
+			offset_nonprojected = saP - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * saP
+			# Because the pinv is calculated numerically, on some models where we should
+			# get an offset of zero-vector, we get something like [1e-14, 1e-15, ...]. These
+			# perturbations actually affect the search distance, so we will just zero it here.
+			# TODO: how to handle numerical innacuracies in the actual subspace construction?
+			# MAKE SURE TO NOTE THIS IN THE PAPER
+			zeros = np.zeros(offset_nonprojected.shape)
+			if np.isclose(offset_nonprojected, zeros).all():
+				print("Info: offset is zero vector. This means that the smallest subspace already intersects the solution space with no offset.")
+				print("\tThis does NOT mean that the solution space is reachable ONLY FROM THOSE REACTIONS from the initial state.")
+				# This also short-circuits the next projection step
+				return zeros
+			return offset_nonprojected
 
 	def create_graph(self, change, level = 0):
 		'''
