@@ -190,7 +190,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 		print(f"Could not find any satisfying states!")
 		return
 	sanity_check()
-	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs, time_bound)
+	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs, time_bound, crn)
 
 
 # This can become a lemma when we eventually use Nagini to verify this
@@ -204,19 +204,32 @@ def sanity_check():
 		idx += 1
 	print("done.")
 
-def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, deadlock_idxs : list, time_bound : int):
+def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, deadlock_idxs : list, time_bound : int, crn : Crn = None):
 	global state_ids
 	# First, connect all terminal states to absorbing
 	global all_states
+	# NOTE: in the paper, we flush the queue, however here, we go through all states and connect all PERIMETER
+	# states to the absorbing, which is the same thing.
+	num_perim_satstates = 0
 	for state in all_states[1::]:
 		if state.perimeter:
+			if satisfies(state.vec, crn.boundary):
+				# print(f"Found satisfying state {tuple(curr_state)}")
+				num_perim_satstates += 1
+				sat_states.append(curr_state_data.idx)
+				# We will create a self-loop later, so declare the total exit rate as 1.0
+				matrixBuilder.add_exit_rate(curr_state_data.idx, 1.0)
+				matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
+				deadlock_idxs.append(curr_state_data.idx)
+				curr_state_data.perimeter = False
+				continue
 			# Expand the state and create transitions ONLY TO EXISTING STATES
 			successors, total_exit_rate = state.successors(True)
 			total_full_rate = state.get_total_outgoing_rate()
 			# states not expanded will go to the absorbing state
 			rate_to_abs = total_full_rate - total_exit_rate
 			for s, rate in successors:
-				stup =s #tuple(s.vec)
+				stup = s #tuple(s.vec)
 				if stup in state_ids:
 					next_idx = state_ids[stup]
 					matrixBuilder.add_next_value(state.idx, next_idx, rate)
@@ -225,6 +238,8 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 			if rate_to_abs > 0.0:
 				matrixBuilder.add_next_value(state.idx, 0, rate_to_abs)
 			matrixBuilder.add_exit_rate(state.idx, total_full_rate)
+	if num_perim_satstates > 0:
+		print(f"We found an additional {num_perim_satstates} satisfying states in the perimeter state indecies!")
 	matrix = matrixBuilder.build()
 	matrixBuilder.assert_all_entries_correct()
 	labeling = StateLabeling(matrixBuilder.size())
