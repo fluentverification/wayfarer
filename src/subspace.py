@@ -141,10 +141,15 @@ class State:
 		print(f"{dep}")
 
 	def create_perp_reactions():
+		'''
+		Creates a list of transitions perpendicular to S0 that we should be able to fire and get to another
+		path to the solution space.
+		'''
 		perp_reactions = []
 		assert(len(subspaces) >= 1)
 		P = subspaces[0].P
 		for r in crn.transitions:
+			# If
 			if np.isclose(P * r.vec_as_mat).all():
 				perp_reactions.append(r)
 
@@ -173,6 +178,7 @@ class State:
 		self.__compute_order()
 		self.perimeter = True
 		self.idx = idx
+		self.prev_states = None
 
 	def __compute_order(self):
 		'''
@@ -264,6 +270,7 @@ class State:
 				if subspace is not None and subspace.rank == 1 and self.order == 0 and \
 					next_state.epsilon[len(next_state.epsilon) - 1] > self.epsilon[len(self.epsilon) - 1]:
 					continue
+				next_state.prev_states = [self]
 				succ.append((next_state, rate))
 			# else:
 			# 	print("not enabled")

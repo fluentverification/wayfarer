@@ -181,6 +181,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			# If this state already exists, use the state data we already have
 			else:
 				s = all_states[state_ids[next_state_tuple]]
+				s.prev_states.append(curr_state_data)
 			assert(s.idx is not None)
 			# Place the transition in the matrix
 			matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
@@ -203,6 +204,9 @@ def sanity_check():
 		assert(state is None or state.idx == idx)
 		idx += 1
 	print("done.")
+
+def backward_trace_expansion(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, all_states : list):
+	pass
 
 def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, deadlock_idxs : list, time_bound : int, crn : Crn = None):
 	global state_ids
