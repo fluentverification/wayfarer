@@ -117,8 +117,10 @@ class State:
 	init : np.matrix = None
 	crn : Crn = None
 	total_offset : np.matrix = None
+	# Reactions perpendicular to S0 used for commutation
+	perp_reactions = None
 	# @staticmethod
-	def initialize_static_vars(crn, dep, single_order=False):
+	def initialize_static_vars(crn, dep, single_order=False, create_perp_rs = False):
 		if not single_order:
 			State.subspaces = dep.create_subspaces(crn)
 		else:
@@ -137,6 +139,14 @@ class State:
 		else:
 			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
 		print(f"{dep}")
+
+	def create_perp_reactions():
+		perp_reactions = []
+		assert(len(subspaces) >= 1)
+		P = subspaces[0].P
+		for r in crn.transitions:
+			if np.isclose(P * r.vec_as_mat).all():
+				perp_reactions.append(r)
 
 	def __init__(self, vec, idx=None):
 		'''

@@ -18,6 +18,7 @@ class Node:
 		self.children = []
 		self.level = level
 		self.count = count
+		self.visited = False
 
 	def __init__(self, reaction, children, level = 0, count = 1):
 		'''
@@ -27,12 +28,16 @@ class Node:
 		self.children = children
 		self.level = level
 		self.count = count
+		self.visited = False
 
 	def add_child(self, child):
 		'''
 		Appends a successor to the node's children
 		'''
 		self.children.append(child)
+
+	def visit(self):
+		self.visited = True
 
 class Reaction:
 	'''
@@ -104,6 +109,7 @@ class DepGraph:
 		self.reaction_levels = []
 		self.species_names = species_names
 		self.root = []
+		self.nodes_by_name = {}
 		self.mask = np.matrix([1.0 for _ in range(len(init_state))]).T
 		self.desired_values = desired_values
 		# Creates the reactions
@@ -118,6 +124,7 @@ class DepGraph:
 		self.consumers = {}
 		self.reaction_levels = []
 		self.root = []
+		self.nodes_by_name = {}
 		self.species_names = [spec_name.strip() for spec_name in ragtimer_lines[0].split("\t")]
 		self.reactions = [Reaction(line, self) for line in ragtimer_lines[3:]]
 		# We want values of zero when we find a -1 and a value of 1 for all others
@@ -261,7 +268,9 @@ class DepGraph:
 					# self.declare_reaction_at_level(producer, level)
 					# recurse down until satisfied
 					next_reactions = self.create_graph(new_change, level + 1)
-					successors.append(Node(producer, next_reactions, level + 1, count))
+					node = Node(producer, next_reactions, level + 1, count)
+					successors.append(node)
+					self.nodes_by_name[producer.name] = node
 			elif c < 0:
 				# We need a consumer reaction
 				if not species in self.consumers:
@@ -282,7 +291,9 @@ class DepGraph:
 					# self.declare_reaction_at_level(consumer, level)
 					next_reactions = self.create_graph(new_change, level + 1)
 					# recurse down until satisfied
-					successors.append(Node(consumer, next_reactions, level + 1, count))
+					node = Node(consumer, next_reactions, level + 1, count)
+					successors.append(node)
+					self.nodes_by_name[consumer.name] = node
 			species_idx += 1
 
 		return successors
