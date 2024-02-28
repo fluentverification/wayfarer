@@ -31,6 +31,7 @@ class Transition:
 		self.can_eliminate = False
 		self.name = name
 		self.rate_constant = rate_constant
+		self.in_s0 = False
 
 	def enabled(self, state):
 		return self.enabled_lambda(state)
