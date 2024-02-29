@@ -69,16 +69,14 @@ def get_prime_factors(n : int) -> list:
 			factors.append((p, exponent))
 	return factors
 
-def get_fraction(f : Fraction) -> tuple:
+def get_fraction(f : float, mx_denom=100) -> tuple:
 	'''
-Requires type Fraction
-	
-Old: ~~In order to get past floating point weirdness, we have to put the float
-into a string first.~~
+In order to get past floating point weirdness, we have to put the float
+into a string first.
 	'''
-	assert(type(f) == Fraction)
-	return f.as_integer_ratio()
-	# return Fraction(str(f)).as_integer_ratio()
+	# assert(type(f) == Fraction)
+	# return f.as_integer_ratio()
+	return Fraction(f).limit_denominator(max_denominator=mx_denom).as_integer_ratio()
 
 def minimal_scaling_factor(vec : np.matrix) -> int:
 	'''
@@ -87,7 +85,6 @@ This does not work if the data type of the matrix is `float`
 	primes = {}
 	for elem in vec:
 		n, d = get_fraction(elem[0, 0])
-		print(f"{n} / {d}")
 		factors = get_prime_factors(d)
 		for p, e in factors:
 			primes[p] = max(primes[p], e) if p in primes else e
