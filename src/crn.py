@@ -36,8 +36,29 @@ class Transition:
 	def enabled(self, state):
 		return self.enabled_lambda(state)
 
+class SortableTransition:
+	def __init__(self, transition : Transition, index : int):
+		self.transition = transition
+		self.rate_constant = transition.rate_constant
+		self.index = index
+
 	def __str__(self):
 		return self.name
+
+	def __gt__(self, other):
+		return self.rate_constant > other.rate_constant
+
+	def __le__(self, other):
+		return self.rate_constant <= other.rate_constant
+
+	def __eq__(self, other):
+		return self.rate_constant == other.rate_constant
+
+	def __lt__(self, other):
+		return self.rate_constant < other.rate_constant
+
+	def __ge__(self, other):
+		return self.rate_constant >= other.rate_constant
 
 class Crn:
 	def __init__(self, transitions=None, boundary=None, init_state=None, all_trans_always_enabled=False, all_rates_const=False):

@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import null_space
 
 from crn import *
 from subspace import *
@@ -93,4 +94,65 @@ This does not work if the data type of the matrix is `float`
 		scale_factor *= prime ** exponent
 	return scale_factor
 	
+def get_nullvectors(R : np.matrix) -> list:
+	'''
+Gets the nullvectors of matrix R (where R has all positive integers)
+and ensures that all of the nullvectors are also of type int.
+	'''
+	return null_space(R) # Todo: turn into list of columns
 
+def get_cycle_vectors(R : np.matrix, num=5):
+	'''
+Any positive integer linear combination of the nullvectors of R are the cycles
+of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
+	'''
+	nv = get_nullvectors(R)
+	cycles = [v for v in nv]
+	n = len(nv)
+	# Add linear combinations
+	# TODO: add support for combinations beyond that
+	print("[WARNING] Wayfarer only supports \"first level\" cycle detection currently. This means only linear combinations of null vectors with coefficients equal to 1 or 0")
+	# m_fac = 1
+	# We already have each individual null vector in `cycles`
+	for i in range(2, n):
+		for j in range(0, i):
+			# TODO: I think this works
+			if len(cycles) >= num:
+				return cycles
+			vsum = sum([v for v in nv[j::i]])
+			cycles.append(vsum)
+	# while len(cycles) < num:
+	# 	pass
+	return cycles
+
+def get_ordered_reactions(crn : Crn) -> list:
+	'''
+Orders the reactions by rate constant, returns a list of their
+indexes in the crn's `transitions` member list
+	'''
+	# Yeah this is messy, but whatever
+	sortable_transitions = [SortableTransition(t, 0) for t in crn.transitions]
+	for i in range(len(sortable_transitions)):
+		sortable_transitions[i].index = i
+	sortable_transitions.sort(reverse=True)
+	return [st.index for st in sortable_transitions]
+
+def cycles_from_cycle_vectors(vecs : list, crn : Crn) -> list:
+	'''
+Creates cycles from cycle vectors
+	'''
+	cycles = []
+	sorted_transitions = get_ordered_reactions(crn)
+	for v in vecs:
+		# Rather than combinatorially expand to all possible
+		# just get those with the most probable transitions
+		# first, since they are most likely to be probable
+		v_counter = v.copy()
+		transitions = []
+		while not np.all(v_counter == 0):
+			for idx in sorted_transitions:
+				transitions.append(crn.transitions[i])
+				v_counter[idx] -= 1
+		cycles.append(Cycle(transitions, crn))
+
+	return cycles
