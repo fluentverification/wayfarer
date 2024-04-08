@@ -16,12 +16,12 @@ from crn import *
 DONT_CARE = -1
 
 class Subspace:
-	mask = None      # (target > DONT_CARE).astype(float)
+	mask = None	  # (target > DONT_CARE).astype(float)
 	# This parillelipiped is the piped matrix containing the normalized
 	# reaction vector scaled by the reaction rate, assuming a constant rate.
 	# Then, piped_inv is the inverse of that Piped matrix, computed only once
 	# for brevity and optimization.
-	piped = None     # Stored for completeness
+	piped = None	 # Stored for completeness
 	piped_inv = None # Assumes that piped ** -1 = piped_inv
 	def initialize_piped(piped_matrix : np.matrix) -> None:
 		Subspace.piped = piped_matrix
@@ -163,6 +163,7 @@ class State:
 		self.__compute_order()
 		self.perimeter = True
 		self.idx = idx
+		self.sbsp = State.subspaces[0]
 
 	def __compute_order(self):
 		'''
@@ -183,7 +184,9 @@ class State:
 		self.order = 0
 		for s in State.subspaces:
 			ep = s.dist(self.adj)
-			if ep == 0:
+			# if ep == 0:
+			if ep < 1e-8: # To account for floating point error
+				self.sbsp = s
 				return
 			self.epsilon.insert(0, ep)
 			self.order += 1
@@ -226,7 +229,8 @@ class State:
 			update_vectors = State.crn.transitions
 		else:
 			# TODO: why is this IndexError'ing on some models?
-			subspace = State.subspaces[max(0, len(State.subspaces) - (self.order + 2))]
+			subspace = self.sbsp # State.subspaces[max(0, len(State.subspaces) - (self.order + 2))]
+			# print(max(0, len(State.subspaces) - (self.order + 2)))
 			if all_successors:
 				# If the CRN variable is passed into get_update_vectors, all successors are returned
 				update_vectors = subspace.get_update_vectors(State.crn)

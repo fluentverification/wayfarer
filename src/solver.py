@@ -152,7 +152,8 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 		# Total full rate: the total rate of all POSSIBLE enabled transitions from this state.
 		successors, total_expanded_rate = curr_state_data.successors(all_successors=expand_all_states)
 		total_full_rate = curr_state_data.get_total_outgoing_rate()
-		assert(total_full_rate >= total_expanded_rate)
+		# print(total_full_rate, total_expanded_rate)
+		assert(total_full_rate + 1e-5 >= total_expanded_rate)
 		if len(successors) == 0:
 			print("No successors")
 			# Introduce a self-loop
@@ -216,12 +217,12 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 			if satisfies(state.vec, crn.boundary):
 				# print(f"Found satisfying state {tuple(curr_state)}")
 				num_perim_satstates += 1
-				sat_states.append(curr_state_data.idx)
+				satisfying_state_idxs.append(state.idx)
 				# We will create a self-loop later, so declare the total exit rate as 1.0
-				matrixBuilder.add_exit_rate(curr_state_data.idx, 1.0)
-				matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
-				deadlock_idxs.append(curr_state_data.idx)
-				curr_state_data.perimeter = False
+				matrixBuilder.add_exit_rate(state.idx, 1.0)
+				matrixBuilder.add_next_value(state.idx, state.idx, 1.0)
+				deadlock_idxs.append(state.idx)
+				state.perimeter = False
 				continue
 			# Expand the state and create transitions ONLY TO EXISTING STATES
 			successors, total_exit_rate = state.successors(True)
@@ -269,5 +270,5 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	env = stormpy.Environment()
 	env.solver_environment.native_solver_environment.precision = stormpy.Rational(1e-100)
 	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
-	assert(result.min >= 0.0 and result.max <= 1.0)
 	print(f"Pmin = {result.at(1)}")
+	assert(result.min + 1e-6 >= 0.0 and result.max <= 1.0 + 1e-6)
