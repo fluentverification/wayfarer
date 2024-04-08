@@ -132,10 +132,10 @@ class State:
 			State.total_offset = State.init
 		# There is only one subspace so no projection is necessary
 		elif len(State.subspaces) == 1:
-			State.total_offset = State.init - dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1])
+			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1])
 		# Result vector must be projected on s0.P
 		else:
-			State.total_offset = State.init - dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
+			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
 		print(f"{dep}")
 
 	def __init__(self, vec, idx=None):
