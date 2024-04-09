@@ -74,7 +74,7 @@ def create_transition(transition_line, species_idxes):
 	if custom_rate_finder is None:
 		rate_finder = lambda state : rate_const * np.prod([state[i] ** rate_mul_vector[i] for i in range(len(rate_mul_vector))])
 	else:
-		rate_finder = lambda state : custom_rate_finder(state, rate_const)
+		rate_finder = lambda state : custom_rate_finder(state, rate_const, tname)
 	if always_enabled:
 		return Transition(transition_vector
 					, lambda state : True

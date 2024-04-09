@@ -98,7 +98,7 @@ if __name__=="__main__":
 	parser.add_argument("-Q", "--rate_constant", action="store_true",
 			help="Use rate constant in piped method.")
 	parser.add_argument("-F", "--rate_finder", default=None,
-			help="If reaction rate ought to be calculated by something other than the standard rate constant method, a Python file may be provided here in order to perform these custom calculations. Will look for a function called rate_finder(state : arraylike, rate_constant : float) -> float")
+			help="If reaction rate ought to be calculated by something other than the standard rate constant method, a Python file may be provided here in order to perform these custom calculations. Will look for a function called rate_finder(state : arraylike, rate_constant : float, reaction_name : str) -> float")
 	args = parser.parse_args()
 	store_traces = args.traces
 	if args.ragtimer is None:
