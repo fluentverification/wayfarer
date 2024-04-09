@@ -16,8 +16,11 @@ used to generate rates for a CRN
 	'''
 	global custom_rate_finder # this should be the ONLY function which MODIFIES this
 	assert(filename.endswith(".py"))
-	module_name = filename.replace(".py", "")
-	mod = importlib.import_module(module_name)
+	module_name = filename.replace(".py", "").split("/").pop()
+	# mod = importlib.import_module(module_name)
+	module_spec = importlib.util.spec_from_file_location(module_name, filename)
+	mod = importlib.util.module_from_spec(module_spec)
+	module_spec.loader.exec_module(mod)
 	try:
 		custom_rate_finder = mod.rate_finder
 	except Exception as e:
