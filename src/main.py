@@ -66,7 +66,7 @@ def subspace_priority_solver(filename, num, time_bound, agnostic=False, piped=Fa
 if __name__=="__main__":
 	parser = argparse.ArgumentParser(
 		prog="wayfarer"
-		, description="wayfarer is a heuristic counterexample generator compatible with RAGTIMER files"
+		, description="wayfarer is a heuristic partial state space generator for lower bounds compatible with RAGTIMER files"
 		, epilog="Developed at USU")
 	parser.add_argument("-r", "--ragtimer", default=None,
 			help="The name of the .ragtimer file to check")
@@ -99,6 +99,8 @@ if __name__=="__main__":
 			help="Use rate constant in piped method.")
 	parser.add_argument("-F", "--rate_finder", default=None,
 			help="If reaction rate ought to be calculated by something other than the standard rate constant method, a Python file may be provided here in order to perform these custom calculations. Will look for a function called rate_finder(state : arraylike, rate_constant : float, reaction_name : str) -> float")
+	parser.add_argument("-U", "--upper", action="store_true",
+			help="Also compute upper bound")
 	args = parser.parse_args()
 	store_traces = args.traces
 	if args.ragtimer is None:
@@ -109,6 +111,7 @@ if __name__=="__main__":
 	if args.rate_finder is not None:
 		parse_custom_rate_finder(args.rate_finder)
 
+	SolverSettings.COMPUTE_UPPER_BOUND = args.upper
 	if args.subspace:
 		subspace_priority(args.ragtimer, num)
 

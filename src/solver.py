@@ -11,10 +11,11 @@ import random
 from stormpy import SparseMatrixBuilder, StateLabeling, SparseModelComponents
 import stormpy
 
-DESIRED_NUMBER_STATES=2
-ABSORBING_INDEX=0
-
-PRINT_FREQUENCY=100000
+class SolverSettings:
+	DESIRED_NUMBER_STATES=2
+	ABSORBING_INDEX=0
+	PRINT_FREQUENCY=100000
+	COMPUTE_UPPER_BOUND=False
 
 all_states = []
 state_ids = {}
@@ -112,7 +113,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	all_states = []
 	# Add the absorbing state
 	matrixBuilder = RandomAccessSparseMatrixBuilder()
-	last_index = ABSORBING_INDEX + 1
+	last_index = SolverSettings.ABSORBING_INDEX + 1
 	all_states.append(None)
 	# Other stuff
 	boundary = crn.boundary
@@ -132,7 +133,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	num_explored = 0
 	while (not pq.empty()) and num_satstates < number:
 		num_explored += 1
-		if num_explored % PRINT_FREQUENCY == 0:
+		if num_explored % SolverSettings.PRINT_FREQUENCY == 0:
 			print(f"Explored {num_explored} states. Have {num_satstates} satisfying")
 		curr_state_data = pq.get()
 		# print(f"Exploring state with index {curr_state_data.idx}")
@@ -272,3 +273,10 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
 	print(f"Pmin = {result.at(1)}")
 	assert(result.min + 1e-6 >= 0.0 and result.max <= 1.0 + 1e-6)
+	if SolverSettings.COMPUTE_UPPER_BOUND:
+		# Upper bound propert
+		chk_property_upper = f"P=? [ true U{prop_bound} \"satisfy\" | \"absorbing\" ]"
+		# print(f"Checking upper bound with property `{chk_property_upper}`")
+		prop_upper = stormpy.parse_properties(chk_property_upper)[0]
+		result_upper = stormpy.check_model_sparse(model, prop_upper, only_initial_states=True)
+		print(f"Pmax = {result_upper.at(1)}")
