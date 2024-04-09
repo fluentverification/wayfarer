@@ -89,7 +89,6 @@ class Subspace:
 	# @Pure
 	def contains(self, other, test_vec): # -> bool:
 		# Check if contains
-		# Requires(type(State.init) == np.matrix)
 		# Requires(len(test_vec) == len(Subspace.mask))
 		# Ensures(Implies(Result(), self.dist(test_vec) >= other.dist(test_vec)))
 		if self.rank < other.rank:
@@ -150,9 +149,6 @@ class State:
 		4. epsilon (type list(int)) : The list of nonzero subspace distances, starting
 		with the largest and working towards the smallest
 		'''
-		# Requires(type(State.init) == np.matrix)
-		# Requires(type(State.target) == np.matrix)
-		# Requires(type(State.subspaces) == List[Subspace])
 		# # Requires(Forall(int, lambda i : Implies(i > 0 and i < len(State.subspaces), State.subspaces[i].contains(State.subspaces[i - 1], State.init))))
 		# Ensures(self.order >= -1)
 		# Ensures(len(self.epsilon) == len(State.subspaces) + 1)
@@ -163,16 +159,12 @@ class State:
 		self.__compute_order()
 		self.perimeter = True
 		self.idx = idx
-		self.sbsp = State.subspaces[0]
+		self.sbsp = State.subspaces[0] if len(State.subspaces) > 0 else None
 
 	def __compute_order(self):
 		'''
 		Computes the order and epsilon vector of the state
 		'''
-		# Requires(type(State.init) == np.matrix)
-		# Requires(type(State.target) == np.matrix)
-		# Ensures(type(self.order) == int and self.order >= -1)
-		# Ensures(type(self.epsilon == list[float]))
 		# Ensures(len(self.epsilon) >= 1)
 		# Ensures(Forall(int, lambda i : (Implies(i > 0 and i < len(State.subspaces), self.epsilon[i] >= self.epsilon[i - 1]))))
 		dist_to_target = Subspace.norm(self.vecm - State.target)
@@ -185,8 +177,10 @@ class State:
 		for s in State.subspaces:
 			ep = s.dist(self.adj)
 			# For some reason the floating point thing has some issues
-			if ep == 0:
-			#if ep < 1e-8: # To account for floating point error
+			#if ep == 0:
+			#f ep > 1e-14 and ep < 1e-12:
+			#print(f"Gotcha! {ep} on state {self.vec} for {s}")
+			if ep < 1e-8: # To account for floating point error
 				self.sbsp = s
 				return
 			self.epsilon.insert(0, ep)
@@ -212,12 +206,7 @@ class State:
 		Only returns the successors using the vectors in the dependency graph
 		that get us closer to the target.
 		'''
-		# Requires(type(State.init) == np.matrix)
-		# Requires(type(State.target) == np.matrix)
-		# Ensures(type(Result()) == tuple)
 		# Ensures(len(Result()) == 2)
-		# Ensures(type(Result()[0]) == list)
-		# Ensures(type(Result()[1]) == float)
 		# Ensures(Result()[1] >= 0.0)
 
 		# If we get the successors, we are no longer a perimeter state
