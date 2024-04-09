@@ -3,6 +3,25 @@ from distance import Bound, BoundTypes
 from dependency import *
 
 import sys
+# Cursed
+import importlib
+
+# A dynamically loaded function pointer from a user file to customize how rates are found
+custom_rate_finder = None
+
+def parse_custom_rate_finder(filename : str):
+	'''
+Loads `filename` (a python file) and looks for a function called rate_finder which is then
+used to generate rates for a CRN
+	'''
+	global custom_rate_finder # this should be the ONLY function which MODIFIES this
+	assert(filename.endswith(".py"))
+	module_name = filename.replace(".py", "")
+	mod = importlib.import_module(module_name)
+	try:
+		custom_rate_finder = mod.rate_finder
+	except Exception as e:
+		print(f"[WARNING] Could not load custom rate finder. Reason: {e}")
 
 def check_valid_identifier(identifier):
 	'''
@@ -51,7 +70,11 @@ def create_transition(transition_line, species_idxes):
 	# Is 1.0 iff is reactant
 	rate_mul_vector = np.array([float(elem < 0) for elem in transition_vector])
 	# The rate, from rate constant k and reactants A, B, is k * A^count(A) * B^count(B)
-	rate_finder = lambda state : rate_const * np.prod([state[i] ** rate_mul_vector[i] for i in range(len(rate_mul_vector))])
+	rate_finder = None
+	if custom_rate_finder is None:
+		rate_finder = lambda state : rate_const * np.prod([state[i] ** rate_mul_vector[i] for i in range(len(rate_mul_vector))])
+	else:
+		rate_finder = lambda state : custom_rate_finder(state, rate_const)
 	if always_enabled:
 		return Transition(transition_vector
 					, lambda state : True

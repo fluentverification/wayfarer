@@ -97,12 +97,18 @@ if __name__=="__main__":
 			help="When expanding states, expand ALL transitions rather than just those which the dependency graph specifies will get the shortest traces. This may help find higher probability traces.")
 	parser.add_argument("-Q", "--rate_constant", action="store_true",
 			help="Use rate constant in piped method.")
+	parser.add_argument("-F", "--rate_finder", default=None,
+			help="If reaction rate ought to be calculated by something other than the standard rate constant method, a Python file may be provided here in order to perform these custom calculations. Will look for a function called rate_finder(state : arraylike, rate_constant : float) -> float")
 	args = parser.parse_args()
 	store_traces = args.traces
 	if args.ragtimer is None:
 		print("Missing args.")
 		sys.exit(1)
 	num = int(args.number)
+
+	if args.rate_finder is not None:
+		parse_custom_rate_finder(args.rate_finder)
+
 	if args.subspace:
 		subspace_priority(args.ragtimer, num)
 
