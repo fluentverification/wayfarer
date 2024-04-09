@@ -184,8 +184,9 @@ class State:
 		self.order = 0
 		for s in State.subspaces:
 			ep = s.dist(self.adj)
-			# if ep == 0:
-			if ep < 1e-8: # To account for floating point error
+			# For some reason the floating point thing has some issues
+			if ep == 0:
+			#if ep < 1e-8: # To account for floating point error
 				self.sbsp = s
 				return
 			self.epsilon.insert(0, ep)
