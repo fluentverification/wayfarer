@@ -137,7 +137,7 @@ class State:
 			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
 		print(f"{dep}")
 
-	def __init__(self, vec, idx=None):
+	def __init__(self, vec, idx=None, reach=1.0):
 		'''
 		Constructor for a new State element. Members within the State class:
 		1. vec (type: np.matrix) : the actual vector representing the state values
@@ -160,6 +160,7 @@ class State:
 		self.perimeter = True
 		self.idx = idx
 		self.sbsp = State.subspaces[0] if len(State.subspaces) > 0 else None
+		self.reach = reach
 
 	def __compute_order(self):
 		'''
@@ -174,17 +175,21 @@ class State:
 			return
 		self.epsilon = [dist_to_target]
 		self.order = 0
-		for s in State.subspaces:
+		# print(self.vec, end=": ")
+		for s in reversed(State.subspaces):
+			# print(s.rank, end=",")
 			ep = s.dist(self.adj)
 			# For some reason the floating point thing has some issues
 			#if ep == 0:
-			#f ep > 1e-14 and ep < 1e-12:
-			#print(f"Gotcha! {ep} on state {self.vec} for {s}")
+			#if ep > 1e-14 and ep < 1e-12:
+			#	print(f"Gotcha! {ep} on state {self.vec} for {s}")
 			if ep < 1e-8: # To account for floating point error
 				self.sbsp = s
+				# print()
 				return
 			self.epsilon.insert(0, ep)
 			self.order += 1
+		# print()
 
 	def get_total_outgoing_rate(self):
 		'''
@@ -257,9 +262,16 @@ class State:
 				if t.enabled(self.vec):
 					rate = t.rate_finder(self.vec)
 					total_outgoing_rate += rate
+		# This assumes these states are new. State re-exploring is handled outside of
+		# this function (in the main exploration function)
+		if not only_tuples:
+			for next_state, rate in succ:
+				next_state.reach = self.reach * (rate / total_outgoing_rate)
 		# print([s[0].vec for s in succ])
 		# print(f"For state {self.vec}, successors are {[state.vec for state, rate in succ]}")
 		return succ, total_outgoing_rate
+
+	# TODO: I think there may be a bug here in what is being compared
 
 	# Comparators. ONLY COMPARES THE ORDER AND THE LOWEST VALUE FOR EPSILON
 	# @Pure
@@ -267,14 +279,20 @@ class State:
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
 		# return self.epsilon[len(self.epsilon) - 1] > other.epsilon[len(other.epsilon) - 1]
-		return self.order > other.order or (self.order == other.order and self.epsilon[0] > other.epsilon[0])
+		return self.order > other.order or \
+				(self.order == other.order and self.epsilon[0] > other.epsilon[0]) or \
+				(self.order == other.order and self.epsilon[0] == other.epsilon[0] and \
+				self.reach < other.reach)
 
 	# @Pure
 	def __lt__(self, other):
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
 		# return self.epsilon[len(self.epsilon) - 1] < other.epsilon[len(other.epsilon) - 1]
-		return self.order < other.order or (self.order == other.order and self.epsilon[0] < other.epsilon[0])
+		return self.order < other.order or \
+				(self.order == other.order and self.epsilon[0] < other.epsilon[0]) or \
+				(self.order == other.order and self.epsilon[0] == other.epsilon[0] and \
+				self.reach > other.reach)
 
 	# @Pure
 	def __le__(self, other):
@@ -298,7 +316,7 @@ class State:
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
 		# return self.epsilon[len(self.epsilon) - 1] == other.epsilon[len(other.epsilon) - 1]
-		return self.order == other.order and self.epsilon[0] == other.epsilon[0]
+		return self.order == other.order and self.epsilon[0] == other.epsilon[0] and self.reach == other.reach
 
 	# Strong equality means we are the same state
 	# @Pure

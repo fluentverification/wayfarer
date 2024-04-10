@@ -182,7 +182,10 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 				pq.put(s)
 			# If this state already exists, use the state data we already have
 			else:
+				# update reachability for re-explored states
+				s_old = s
 				s = all_states[state_ids[next_state_tuple]]
+				s.reach += s_old.reach
 			assert(s.idx is not None)
 			# Place the transition in the matrix
 			matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
