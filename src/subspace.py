@@ -223,7 +223,7 @@ class State:
 			# print(max(0, len(State.subspaces) - (self.order + 2)))
 			if all_successors:
 				# If the CRN variable is passed into get_update_vectors, all successors are returned
-				update_vectors = subspace.get_update_vectors(State.crn)
+				update_vectors = State.crn.transitions # subspace.get_update_vectors(State.crn)
 			else:
 				update_vectors = subspace.get_update_vectors() # State.crn)
 		# print(f"Update vectors {[str(vec) for vec in update_vectors]}")
