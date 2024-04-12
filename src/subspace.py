@@ -116,6 +116,11 @@ class State:
 	init : np.matrix = None
 	crn : Crn = None
 	total_offset : np.matrix = None
+	# Cycle and commute stuff. There is a list of known useful cycles, orthocycles,
+	# and trivially commutable transitions
+	orthocycles            : list = []
+	non_orthocycles        : list = []
+	commutable_transitions : list = []
 	# @staticmethod
 	def initialize_static_vars(crn, dep, single_order=False):
 		if not single_order:

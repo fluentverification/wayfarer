@@ -353,6 +353,7 @@ class DepGraph:
 			level = self.reaction_levels[lev_idx]
 			for reaction in level:
 				transition = crn.find_transition_by_name(reaction.name)
+				transition.in_s0 = True
 				available_reactions.append(transition)
 			indecies.append(len(available_reactions) - 1)
 		# The last index is unnecessary as it is just the last available index
