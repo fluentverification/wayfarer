@@ -23,6 +23,21 @@ From there, it's a priority first search, prioritizing first:
 
 It creates a partial state graph and seeks $K$ satisfying states.
 
+## Installation
+
+It is recommended to use a virtual environment to locally install the dependencies (since StormPy is a bit of a beast). In the project directory:
+
+```sh
+# Create a virtual environment
+python3 -m venv .venv
+# Activate the virtual environment
+source .venv/bin/activate
+# Install the dependencies
+pip -r install dependencies.txt
+```
+
+When done, the `deactivate` command can be used.
+
 ## Usage
 
 ```bash
