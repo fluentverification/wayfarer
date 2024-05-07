@@ -6,6 +6,11 @@ from crn import *
 from subspace import *
 from util import *
 
+def null(A : np.matrix, eps : float=1e-7):
+	u, s, vh = np.linalg.svd(A, full_matrices=1, compute_uv=1)
+	null_space = np.compress(s <= eps, vh, axis=0)
+	return null_space.H
+
 class Node:
 	'''
 	A Node in the dependency graph
@@ -147,7 +152,7 @@ class DepGraph:
 
 	def create_offset_vector(self, sn : Subspace, s0 : Subspace = None):
 		'''
-		Creates an offset vector, f, s.t. f \in S0 and f minimizes the distance from
+		Creates an offset vector, f, s.t. $f \\in S0$ and f minimizes the distance from
 		Sn to Ss (the solution space).
 
 		The process is as follows:
@@ -155,13 +160,14 @@ class DepGraph:
 		2. Then, we must find the shortest distance from Sn to this intersection
 		'''
 		sa = self.particular_solution - self.init_state
+		Avecs = self.sat_basis.copy()
+		for t in sn.transitions:
+			Avecs.append(-np.matrix(t.vector).T)
+		A = np.column_stack(Avecs)
+
 		if s0 is None:
 			# If this is true we can short circuit knowing that the
 			# shortest distance is contained in S0 already
-			Avecs = self.sat_basis.copy()
-			for t in sn.transitions:
-				Avecs.append(-np.matrix(t.vector).T)
-			A = np.column_stack(Avecs)
 			offset_nonprojected = sa - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * sa
 			# Because the pinv is calculated numerically, on some models where we should
 			# get an offset of zero-vector, we get something like [1e-14, 1e-15, ...]. These
@@ -174,30 +180,23 @@ class DepGraph:
 				return zeros
 			return offset_nonprojected
 		else:
-			# In this case, we wish to solve the equation
-			# Snx + s0 = P0(Ssy + sp - s0) + s0 (project the solution space onto the OFFSET S0)
-			# Snx = P0(Ssy + sp - s0)
-			# [Sn -P0Ss]v = P0(sp - s0)
-			saP = s0.P * sa
-			Avecs = []
-			for v in self.sat_basis:
-				Avecs.append(s0.P * v)
-			for t in sn.transitions:
-				Avecs.append(-np.matrix(t.vector).T)
-			A = np.column_stack(Avecs)
-			offset_nonprojected = saP - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * saP
-			# Because the pinv is calculated numerically, on some models where we should
-			# get an offset of zero-vector, we get something like [1e-14, 1e-15, ...]. These
-			# perturbations actually affect the search distance, so we will just zero it here.
-			# TODO: how to handle numerical innacuracies in the actual subspace construction?
-			# MAKE SURE TO NOTE THIS IN THE PAPER
-			zeros = np.zeros(offset_nonprojected.shape)
-			if np.isclose(offset_nonprojected, zeros).all():
-				print("Info: offset is zero vector. This means that the smallest subspace already intersects the solution space with no offset.")
-				print("\tThis does NOT mean that the solution space is reachable ONLY FROM THOSE REACTIONS from the initial state.")
+			# First, we must find the intersection, which is all solutions to the equation
+			# v = M_I x_I + s_I. Thus, we must find M_I and s_I. s_I is easy.
+			si = sa
+			# M_I is the null vectors of the matrix [ M_0 \\ M_S ]
+			B = np.matrix(np.block([[s0.M], [A]]))
+			M_I = null(B)
+			# Now to find the offset vector, we must find the minimal solution f to the following equation
+			# M_n x_n + s_0 + f = M_I x_I + (s_p + s_0), thus M_n x_n + f = M_I x_I + s_p
+			# Therefore we find f = [M_I -M_n] [x_I x_n] + s_p, minimizing |f|
+			P_I = M_I * np.linalg.pinv(M_I.T * M_I) * M_I.T
+			# Project si onto M_I and find the residual
+			f = si = P_I * si
+			zeros = np.zeros(f.shape)
+			if np.isclose(f, zeros).all():
 				# This also short-circuits the next projection step
 				return zeros
-			return offset_nonprojected
+			return f
 
 	def create_graph(self, change, level = 0):
 		'''
