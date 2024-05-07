@@ -184,7 +184,16 @@ class DepGraph:
 			# v = M_I x_I + s_I. Thus, we must find M_I and s_I. s_I is easy.
 			si = sa
 			# M_I is the null vectors of the matrix [ M_0 \\ M_S ]
-			B = np.matrix(np.block([[s0.M], [A]]))
+			M0 = s0.M.copy()
+			pad = max(M0.shape[1], A.shape[1])
+			# Pad. No vertical padding
+			# Explaination of pad_width: it is a tuple of tuples. The first sub tuple
+			# is the vertical padding, and the second is the horizontal. Each sub tuple
+			# is of the form (before_padding, after_padding), so to pad horizontally
+			# with zeros N times after, you'd have ((0, 0), (0, N))
+			Ap = np.matrix(np.pad(A, pad_width=((0, 0), (0, pad - A.shape[1]))))
+			M0p = np.matrix(np.pad(M0, pad_width=((0, 0), (0, pad - M0.shape[1]))))
+			B = np.matrix(np.block([[M0p], [Ap]]))
 			M_I = null(B)
 			# Now to find the offset vector, we must find the minimal solution f to the following equation
 			# M_n x_n + s_0 + f = M_I x_I + (s_p + s_0), thus M_n x_n + f = M_I x_I + s_p
