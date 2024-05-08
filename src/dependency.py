@@ -184,7 +184,7 @@ class DepGraph:
 		else:
 			# First, we must find the intersection, which is all solutions to the equation
 			# v = M_I x_I + s_I. Thus, we must find M_I and s_I. s_I is easy.
-			si = sa
+			si = self.particular_solution
 			# M_I is the null vectors of the matrix [ M_0 \\ M_S ]
 			M0 = s0.M.copy()
 			pad = max(M0.shape[1], A.shape[1])
