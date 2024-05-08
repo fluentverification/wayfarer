@@ -141,6 +141,7 @@ class DepGraph:
 			v = np.matrix([float(i == j and self.mask[i][0, 0] == 0) for j in range(len(self.particular_solution))]).T
 			if (v != 0).any():
 				self.sat_basis.append(v)
+		Subspace.solution_basis = self.sat_basis
 		self.desired_values = desired_values
 		init_state = np.matrix([int(val) for val in ragtimer_lines[1].split("\t")]).T
 		change = np.multiply(desired_values - init_state, self.mask)
@@ -151,63 +152,6 @@ class DepGraph:
 		# self.produced_species = {}
 		self.graph_root = self.create_graph(change)
 		self.create_reaction_levels()
-
-	def create_offset_vector(self, sn : Subspace, s0 : Subspace = None):
-		'''
-		Creates an offset vector, f, s.t. $f \\in S0$ and f minimizes the distance from
-		Sn to Ss (the solution space).
-
-		The process is as follows:
-		1. First we must find an intersection between S0 and Ss.
-		2. Then, we must find the shortest distance from Sn to this intersection
-		'''
-		sa = self.particular_solution - self.init_state
-		Avecs = self.sat_basis.copy()
-		for t in sn.transitions:
-			Avecs.append(-np.matrix(t.vector).T)
-		A = np.column_stack(Avecs)
-
-		if s0 is None:
-			# If this is true we can short circuit knowing that the
-			# shortest distance is contained in S0 already
-			offset_nonprojected = sa - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * sa
-			# Because the pinv is calculated numerically, on some models where we should
-			# get an offset of zero-vector, we get something like [1e-14, 1e-15, ...]. These
-			# perturbations actually affect the search distance, so we will just zero it here.
-			# TODO: how to handle numerical innacuracies in the actual subspace construction?
-			# MAKE SURE TO NOTE THIS IN THE PAPER
-			zeros = np.zeros(offset_nonprojected.shape)
-			if np.isclose(offset_nonprojected, zeros).all():
-				# This also short-circuits the next projection step
-				return zeros
-			return offset_nonprojected
-		else:
-			# First, we must find the intersection, which is all solutions to the equation
-			# v = M_I x_I + s_I. Thus, we must find M_I and s_I. s_I is easy.
-			si = self.particular_solution
-			# M_I is the null vectors of the matrix [ M_0 \\ M_S ]
-			M0 = s0.M.copy()
-			pad = max(M0.shape[1], A.shape[1])
-			# Pad. No vertical padding
-			# Explaination of pad_width: it is a tuple of tuples. The first sub tuple
-			# is the vertical padding, and the second is the horizontal. Each sub tuple
-			# is of the form (before_padding, after_padding), so to pad horizontally
-			# with zeros N times after, you'd have ((0, 0), (0, N))
-			Ap = np.matrix(np.pad(A, pad_width=((0, 0), (0, pad - A.shape[1]))))
-			M0p = np.matrix(np.pad(M0, pad_width=((0, 0), (0, pad - M0.shape[1]))))
-			B = np.matrix(np.block([[M0p], [Ap]]))
-			M_I = null(B)
-			# Now to find the offset vector, we must find the minimal solution f to the following equation
-			# M_n x_n + s_0 + f = M_I x_I + (s_p + s_0), thus M_n x_n + f = M_I x_I + s_p
-			# Therefore we find f = [M_I -M_n] [x_I x_n] + s_p, minimizing |f|
-			P_I = M_I * np.linalg.pinv(M_I.T * M_I) * M_I.T
-			# Project si onto M_I and find the residual
-			f = si - P_I * si
-			zeros = np.zeros(f.shape)
-			if np.isclose(f, zeros).all():
-				# This also short-circuits the next projection step
-				return zeros
-			return f
 
 	def create_graph(self, change, level = 0):
 		'''
@@ -374,11 +318,11 @@ class DepGraph:
 		# print(indecies, "and ", [t.name for t in available_reactions])
 		for i in range(len(indecies)):
 			idx = indecies[i]
-			last_idx = indecies[i - 1] if i > 1 else 0
+			# last_idx = indecies[i - 1] if i > 1 else 0
 			# TODO: should be idx or idx + 1
 			used_transitions = available_reactions[:idx + 1]
 			unused_transitions = available_reactions[idx + 1:]
-			last_layer = available_reactions[last_idx:idx]
+			# last_layer = available_reactions[last_idx:idx]
 			subspace = Subspace(used_transitions, unused_transitions) #, last_layer)
 			# print(f"Last layer is {[t.name for t in last_layer]}")
 			subspaces.append(subspace)

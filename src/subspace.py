@@ -24,13 +24,17 @@ class Subspace:
 	# reaction vector scaled by the reaction rate, assuming a constant rate.
 	# Then, piped_inv is the inverse of that Piped matrix, computed only once
 	# for brevity and optimization.
-	piped = None	 # Stored for completeness
-	piped_inv = None # Assumes that piped ** -1 = piped_inv
+	piped                 = None # Stored for completeness
+	piped_inv             = None # Assumes that piped ** -1 = piped_inv
+	solution_basis : list = None # The basis vectors for the solution part of the subspace
+
+	@staticmethod
 	def initialize_piped(piped_matrix : np.matrix) -> None:
 		Subspace.piped = piped_matrix
 		Subspace.piped_inv = np.linalg.pinv(piped_matrix)
 
 	# @Pure
+	@staticmethod
 	def norm(vec): # -> float:
 		'''
 		Has two behaviors:
@@ -56,6 +60,7 @@ class Subspace:
 		transitions : the transitions forming the basis of the subspace
 		excluded_transitions : all other transitions in the VASS
 		'''
+		assert(Subspace.solution_basis is not None)
 		# Requires(Forall(int, lambda i : Implies(i > 0 && i < len(transitions), len(transitions[i].vector) == len(transitions[i - 1].vector))))
 		# Requires(Forall(int, lambda i : Implies(i > 0 && i < len(excluded_transitions), len(excluded_transitions[i].vector) == len(excluded_transitions[i - 1].vector))))
 		# Requires(len(transitions) >= 1 && len(excluded_transitions) >= 1)
@@ -64,6 +69,8 @@ class Subspace:
 		self.excluded_transitions = excluded_transitions
 		self.last_layer = last_layer
 		basis_vectors = [np.matrix(t.vector).T for t in transitions]
+		for b in Subspace.solution_basis:
+			basis_vectors.append(b)
 		# print(basis_vectors[0])
 		# TODO: make sure we're appending to the right axis
 		A = np.column_stack(basis_vectors) # np.matrix(basis_vectors[0].append(basis_vectors[1:], axis=1))
@@ -125,7 +132,7 @@ class State:
 	orthocycles            : list = []
 	non_orthocycles        : list = []
 	commutable_transitions : list = []
-	# @staticmethod
+	@staticmethod
 	def initialize_static_vars(crn, dep, single_order=False):
 		if not single_order:
 			State.subspaces = dep.create_subspaces(crn)
@@ -139,14 +146,7 @@ class State:
 		to_frac_matrix(State.target)
 		to_frac_matrix(Subspace.mask)
 		State.crn = crn
-		if len(State.subspaces) == 0:
-			State.total_offset = State.init
-		# There is only one subspace so no projection is necessary
-		elif len(State.subspaces) == 1:
-			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1])
-		# Result vector must be projected on s0.P
-		else:
-			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
+		State.total_offset = dep.particular_solution
 		to_frac_matrix(State.total_offset)
 		print(f"{dep}")
 
