@@ -2,6 +2,8 @@ from crn import *
 from distance import Bound, BoundTypes
 from dependency import *
 
+# from stormpy import Rational
+
 import sys
 # Cursed
 import importlib

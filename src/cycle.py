@@ -4,12 +4,13 @@ from scipy.linalg import null_space
 from crn import *
 from subspace import *
 
+# TODO: are we sure we need both?
 from fractions import Fraction
 
 class Cycle:
 	def __init__(self, ordered_reactions : list):
 		'''
-	Creates an object 
+	Creates an object
 		'''
 		self.__ordered_reactions = ordered_reactions
 		self.__check_cycle_valid()
@@ -17,7 +18,7 @@ class Cycle:
 		if not np.any(self.__in_s0):
 			raise Exception("Cycle must leave S0 (else it may be useless)!")
 		self.is_orthocycle = np.all(self.__in_s0)
-	
+
 	def __check_cycle_valid(self) -> bool:
 		sum = self.__ordered_reactions[0].vec_as_mat
 		for r in self.__ordered_reactions[1::]:
@@ -93,7 +94,7 @@ This does not work if the data type of the matrix is `float`
 	for prime, exponent in primes.items():
 		scale_factor *= prime ** exponent
 	return scale_factor
-	
+
 def get_nullvectors(R : np.matrix) -> list:
 	'''
 Gets the nullvectors of matrix R (where R has all positive integers)

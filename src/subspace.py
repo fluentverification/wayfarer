@@ -12,6 +12,9 @@ import numpy as np
 
 from distance import vass_distance
 from crn import *
+from util import to_frac_matrix
+
+# from stormpy import Rational
 
 DONT_CARE = -1
 
@@ -64,6 +67,7 @@ class Subspace:
 		# print(basis_vectors[0])
 		# TODO: make sure we're appending to the right axis
 		A = np.column_stack(basis_vectors) # np.matrix(basis_vectors[0].append(basis_vectors[1:], axis=1))
+		to_frac_matrix(A)
 		self.M = A
 		# print(A)
 		# Use the pseudoinverse since with rectangular matrices,
@@ -131,6 +135,9 @@ class State:
 		State.init = np.matrix(crn.init_state).T
 		State.target = np.matrix([b.to_num() for b in crn.boundary]).T
 		Subspace.mask = np.matrix([b.to_mask() for b in crn.boundary]).T
+		to_frac_matrix(State.init)
+		to_frac_matrix(State.target)
+		to_frac_matrix(Subspace.mask)
 		State.crn = crn
 		if len(State.subspaces) == 0:
 			State.total_offset = State.init
@@ -140,6 +147,7 @@ class State:
 		# Result vector must be projected on s0.P
 		else:
 			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
+		to_frac_matrix(State.total_offset)
 		print(f"{dep}")
 
 	def __init__(self, vec, idx=None, reach=1.0):
@@ -159,6 +167,7 @@ class State:
 		# Ensures(len(self.epsilon) == len(State.subspaces) + 1)
 		self.vec = vec
 		self.vecm = np.matrix(vec).T
+		to_frac_matrix(self.vecm)
 		self.adj = self.vecm - State.total_offset # State.init
 		self.order : int = 0
 		self.__compute_order()

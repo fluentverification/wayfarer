@@ -6,6 +6,8 @@ from crn import *
 from subspace import *
 from util import *
 
+# from stormpy import Rational
+
 def null(A : np.matrix, eps : float=1e-7):
 	u, s, vh = np.linalg.svd(A, full_matrices=1, compute_uv=1)
 	null_space = np.compress(s <= eps, vh, axis=0)
@@ -200,7 +202,7 @@ class DepGraph:
 			# Therefore we find f = [M_I -M_n] [x_I x_n] + s_p, minimizing |f|
 			P_I = M_I * np.linalg.pinv(M_I.T * M_I) * M_I.T
 			# Project si onto M_I and find the residual
-			f = si = P_I * si
+			f = si - P_I * si
 			zeros = np.zeros(f.shape)
 			if np.isclose(f, zeros).all():
 				# This also short-circuits the next projection step
