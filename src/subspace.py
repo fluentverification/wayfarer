@@ -172,7 +172,7 @@ class State:
 		self.adj = self.vecm - State.total_offset # State.init
 		self.order : int = 0
 		self.__compute_order()
-		print(self.epsilon)
+		# print(self.epsilon)
 		self.perimeter = True
 		self.idx = idx
 		self.sbsp = State.subspaces[0] if len(State.subspaces) > 0 else None
