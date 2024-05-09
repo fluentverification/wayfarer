@@ -2,6 +2,7 @@ USE_CUDA=False
 VERIFY=True
 
 # if not USE_CUDA:
+from fractions import Fraction
 import numpy as np
 # else:
 	# import cupy as np
@@ -49,8 +50,8 @@ class Subspace:
 		# Requires(len(vec) == len(Subspace.mask))
 		# Ensures(Result() >= 0.0)
 		if Subspace.piped_inv is not None:
-			return float(np.linalg.norm(Subspace.piped_inv * vec))
-		return float(np.linalg.norm(np.multiply(vec, Subspace.mask)))
+			return Fraction(np.linalg.norm(Subspace.piped_inv * vec, ord=1)).limit_denominator(300)
+		return Fraction(np.linalg.norm(np.multiply(vec, Subspace.mask), ord=1)).limit_denominator(300)
 
 
 	# Type of elements in transitions: crn.Transition
@@ -171,6 +172,7 @@ class State:
 		self.adj = self.vecm - State.total_offset # State.init
 		self.order : int = 0
 		self.__compute_order()
+		print(self.epsilon)
 		self.perimeter = True
 		self.idx = idx
 		self.sbsp = State.subspaces[0] if len(State.subspaces) > 0 else None
@@ -183,8 +185,8 @@ class State:
 		# Ensures(len(self.epsilon) >= 1)
 		# Ensures(Forall(int, lambda i : (Implies(i > 0 and i < len(State.subspaces), self.epsilon[i] >= self.epsilon[i - 1]))))
 		dist_to_target = Subspace.norm(self.vecm - State.target)
-		if dist_to_target == 0.0:
-			self.epsilon : list = [0.0]
+		if dist_to_target == 0:
+			self.epsilon : list = [0]
 			self.order = -1
 			return
 		self.epsilon = [dist_to_target]
