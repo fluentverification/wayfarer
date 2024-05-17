@@ -62,18 +62,20 @@ def create_transition(transition_line, species_idxes):
 	transition_vector = np.array([0 for _ in range(len(species_idxes))])
 	always_enabled = False
 	is_consumer = False
+	# Is 1.0 iff is reactant
+	rate_mul_vector = np.array([0.0 for _ in transition_vector])
 	for reactant in reactants:
 		if reactant == "0":
 			always_enabled = True
 			break
-		transition_vector[species_idxes[reactant]] -= 1
+		idx = species_idxes[reactant]
+		transition_vector[idx] -= 1
+		rate_mul_vector[idx] = 1.0
 	for product in products:
 		if product == "0":
 			is_consumer = True
 			break
 		transition_vector[species_idxes[product]] += 1
-	# Is 1.0 iff is reactant
-	rate_mul_vector = np.array([float(elem < 0) for elem in transition_vector])
 	# The rate, from rate constant k and reactants A, B, is k * A^count(A) * B^count(B)
 	rate_finder = None
 	if custom_rate_finder is None:
