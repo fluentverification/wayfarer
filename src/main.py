@@ -101,8 +101,11 @@ if __name__=="__main__":
 			help="If reaction rate ought to be calculated by something other than the standard rate constant method, a Python file may be provided here in order to perform these custom calculations. Will look for a function called rate_finder(state : arraylike, rate_constant : float, reaction_name : str) -> float")
 	parser.add_argument("-U", "--upper", action="store_true",
 			help="Also compute upper bound")
+	parser.add_argument("-A", "--abstract", action="store_true",
+			help="Abstract states from trivially commutable reactions")
 	args = parser.parse_args()
 	store_traces = args.traces
+	State.abstract_states = args.abstract
 	if args.ragtimer is None:
 		print("Missing args.")
 		sys.exit(1)

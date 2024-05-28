@@ -127,6 +127,7 @@ class State:
 	orthocycles            : list = []
 	non_orthocycles        : list = []
 	commutable_transitions : list = []
+	abstract_states        : bool = False
 	# @staticmethod
 	def initialize_static_vars(crn, dep, single_order=False):
 		if not single_order:
@@ -151,6 +152,20 @@ class State:
 			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
 		to_frac_matrix(State.total_offset)
 		print(f"{dep}")
+
+		# Find the trivially commutable reactions
+		print("Trivially commutable reactions: ")
+		s0 = reversed(State.subspaces[0])[0]
+		if not State.abstract_states:
+			return
+		t_vector = np.abs(s0.transitions[0].vec_as_mat) + np.abs(s0.transitions[0].catalysts)
+		for t in s0.transitions[1::]:
+			t.vector += np.abs(t.vec_as_mat) + np.abs(t.catalysts)
+		for t in s0.excluded_transitions:
+			if t.independent(t_vector):
+				t.trivially_commutable = True
+				print(t.name, end=" ")
+		print()
 
 	def __init__(self, vec, idx=None, reach=1.0):
 		'''
@@ -249,6 +264,8 @@ class State:
 				update_vectors = subspace.get_update_vectors() # State.crn)
 		# print(f"Update vectors {[str(vec) for vec in update_vectors]}")
 		for t in update_vectors:
+			if State.abstract_states and update_vectors.trivially_commutable:
+				continue
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)

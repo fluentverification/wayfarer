@@ -64,6 +64,7 @@ def create_transition(transition_line, species_idxes):
 	is_consumer = False
 	# Is 1.0 iff is reactant
 	rate_mul_vector = np.array([0.0 for _ in transition_vector])
+	catalysts = np.array([0.0 for _ in transition_vector])
 	for reactant in reactants:
 		if reactant == "0":
 			always_enabled = True
@@ -75,6 +76,9 @@ def create_transition(transition_line, species_idxes):
 		if product == "0":
 			is_consumer = True
 			break
+		elif product in reactants:
+			idx = species_idxes[product]
+			catalysts[idx] = 1.0
 		transition_vector[species_idxes[product]] += 1
 	# The rate, from rate constant k and reactants A, B, is k * A^count(A) * B^count(B)
 	rate_finder = None

@@ -23,7 +23,7 @@ class Transition:
 	# vector      #: np.vector
 	# enabled     #: lambda
 	# rate_finder #: lambda
-	def __init__(self, vector, enabled, rate_finder, name=None, rate_constant=None):
+	def __init__(self, vector, enabled, rate_finder, name=None, rate_constant=None, catalysts = None):
 		self.vector = np.array(vector)
 		self.vec_as_mat = np.matrix(vector).T
 		self.enabled_lambda = enabled
@@ -32,9 +32,16 @@ class Transition:
 		self.name = name
 		self.rate_constant = rate_constant
 		self.in_s0 = False
+		self.trivially_commutable = False
+		self.catalysts = catalysts
 
 	def enabled(self, state):
 		return self.enabled_lambda(state)
+
+	def independent(self, reactions_vector) -> bool:
+		t_vector = np.abs(self.vector_as_mat) + np.abs(self.catalysts)
+		# if the reactions vector is perpendicular to this t_vector
+		return np.all((t_vector.T * reactions_vector) == 0)
 
 class SortableTransition:
 	def __init__(self, transition : Transition, index : int):
