@@ -39,7 +39,7 @@ class Transition:
 		return self.enabled_lambda(state)
 
 	def independent(self, reactions_vector) -> bool:
-		t_vector = np.abs(self.vector_as_mat) + np.abs(self.catalysts)
+		t_vector = np.abs(self.vec_as_mat) + np.abs(self.catalysts)
 		# if the reactions vector is perpendicular to this t_vector
 		return np.all((t_vector.T * reactions_vector) == 0)
 

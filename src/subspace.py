@@ -155,13 +155,14 @@ class State:
 
 		# Find the trivially commutable reactions
 		print("Trivially commutable reactions: ")
-		s0 = reversed(State.subspaces[0])[0]
+		s0 = State.subspaces[len(State.subspaces) - 1]
 		if not State.abstract_states:
+			print("Not abstracting states")
 			return
 		t_vector = np.abs(s0.transitions[0].vec_as_mat) + np.abs(s0.transitions[0].catalysts)
 		for t in s0.transitions[1::]:
 			t.vector += np.abs(t.vec_as_mat) + np.abs(t.catalysts)
-		for t in s0.excluded_transitions:
+		for t in crn.transitions:
 			if t.independent(t_vector):
 				t.trivially_commutable = True
 				print(t.name, end=" ")
@@ -233,7 +234,7 @@ class State:
 		transitions = State.crn.transitions
 		total_rate = 0.0
 		for t in transitions:
-			if t.enabled(vec):
+			if t.enabled(vec) and not (State.abstract_states and t.trivially_commutable):
 				total_rate += t.rate_finder(vec)
 		return total_rate
 
@@ -264,8 +265,6 @@ class State:
 				update_vectors = subspace.get_update_vectors() # State.crn)
 		# print(f"Update vectors {[str(vec) for vec in update_vectors]}")
 		for t in update_vectors:
-			if State.abstract_states and update_vectors.trivially_commutable:
-				continue
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)

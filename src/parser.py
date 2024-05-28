@@ -91,14 +91,16 @@ def create_transition(transition_line, species_idxes):
 					, lambda state : True
 					, rate_finder
 					, tname
-					, rate_const)
+					, rate_const
+					, catalysts)
 	reactant_idxes = [species_idxes[reactant] for reactant in reactants]
 	# Require all reactants to be strictly greater than zero
 	return Transition(transition_vector
 				, lambda state : np.all([state[i] > 0 for i in reactant_idxes])
 				, rate_finder
 				, tname
-				, rate_const)
+				, rate_const
+				, catalysts)
 
 def parse_ragtimer(filename):
 	with open(filename, 'r') as rag:
