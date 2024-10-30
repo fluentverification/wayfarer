@@ -302,14 +302,18 @@ class DepGraph:
 			self.create_reaction_level(node)
 		self.reaction_levels.reverse()
 
+	# Should do minimal root distance!!!!
 	def create_reaction_level(self, node : Node):
 		if node is None:
 			return -1
 		if node.children is None or len(node.children) == 0:
+			print(f"Node {node.reaction.name} has level 0")
 			self.declare_reaction_at_level(node.reaction, 0)
 			return 0
+		print(f"Node {node.reaction.name} has children {' '.join([c.reaction.name for c in node.children])}")
 		successor_levels = [self.create_reaction_level(n) for n in node.children]
 		level = 1 + min(successor_levels)
+		print(f"Node {node.reaction.name} has level {level}")
 		self.declare_reaction_at_level(node.reaction, level)
 		return level
 
