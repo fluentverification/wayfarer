@@ -222,6 +222,7 @@ class DepGraph:
 				if not self.agnostic and self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0): # 0:
 					continue
 				spec_producers = self.producers[species]
+				# print([p.name for p in spec_producers])
 				for producer in spec_producers:
 					if not producer.name in self.used_reactions:
 						allowed_reactions.append(producer.name)
@@ -253,6 +254,7 @@ class DepGraph:
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
+					# print(producer.name)
 					if producer.name in self.used_reactions and not producer.name in allowed_reactions:
 						continue
 					producer_idxs = [self.species_names.index(producer_species) for producer_species in producer.in_species if producer_species not in self.used_species]
@@ -298,6 +300,7 @@ class DepGraph:
 		if node.children is None or len(node.children) == 0:
 			self.declare_reaction_at_level(node.reaction, 0)
 			return 0
+		# print(node.reaction.name, node.level)
 		successor_levels = [self.create_reaction_level(n) for n in node.children]
 		level = 1 + min(successor_levels)
 		self.declare_reaction_at_level(node.reaction, level)
@@ -308,6 +311,7 @@ class DepGraph:
 		Declares the reaction at a specific level in the graph (for easy parsing later without having to
 		traverse the actual graph)
 		'''
+		# print(f"Declaring reaction {reaction.name} at level {level}")
 		while len(self.reaction_levels) <= level:
 			self.reaction_levels.append([])
 		self.reaction_levels[level].append(reaction)

@@ -117,8 +117,8 @@ class State:
 	init : np.matrix = None
 	crn : Crn = None
 	total_offset : np.matrix = None
-	# @staticmethod
-	def initialize_static_vars(crn, dep, single_order=False):
+	@staticmethod
+	def initialize_static_vars(crn : Crn, dep, single_order=False):
 		if not single_order:
 			State.subspaces = dep.create_subspaces(crn)
 		else:
@@ -136,6 +136,7 @@ class State:
 		# Result vector must be projected on s0.P
 		else:
 			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
+		# print("offset\n", State.total_offset - State.init)
 		print(f"{dep}")
 
 	def __init__(self, vec, idx=None):

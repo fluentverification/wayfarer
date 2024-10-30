@@ -190,7 +190,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 		print(f"Could not find any satisfying states!")
 		return
 	sanity_check()
-	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs, time_bound, crn)
+	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs, time_bound, crn) #, sat_states)
 
 
 # This can become a lemma when we eventually use Nagini to verify this
@@ -204,7 +204,7 @@ def sanity_check():
 		idx += 1
 	print("done.")
 
-def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, deadlock_idxs : list, time_bound : int, crn : Crn = None):
+def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, deadlock_idxs : list, time_bound : int, crn : Crn = None): #, sat_states : list = None):
 	global state_ids
 	# First, connect all terminal states to absorbing
 	global all_states
@@ -216,12 +216,13 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 			if satisfies(state.vec, crn.boundary):
 				# print(f"Found satisfying state {tuple(curr_state)}")
 				num_perim_satstates += 1
-				sat_states.append(curr_state_data.idx)
+				# sat_states.append(state.idx)
+				satisfying_state_idxs.append(state.idx)
 				# We will create a self-loop later, so declare the total exit rate as 1.0
-				matrixBuilder.add_exit_rate(curr_state_data.idx, 1.0)
-				matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
-				deadlock_idxs.append(curr_state_data.idx)
-				curr_state_data.perimeter = False
+				matrixBuilder.add_exit_rate(state.idx, 1.0)
+				matrixBuilder.add_next_value(state.idx, state.idx, 1.0)
+				deadlock_idxs.append(state.idx)
+				state.perimeter = False
 				continue
 			# Expand the state and create transitions ONLY TO EXISTING STATES
 			successors, total_exit_rate = state.successors(True)
