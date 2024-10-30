@@ -292,19 +292,19 @@ class DepGraph:
 	def create_reaction_levels(self):
 		for node in self.graph_root:
 			self.create_reaction_level(node)
-		self.reaction_levels.reverse()
+		# self.reaction_levels.reverse()
 
-	def create_reaction_level(self, node : Node):
+	def create_reaction_level(self, node : Node, level = 0):
 		if node is None:
-			return -1
+			return
 		if node.children is None or len(node.children) == 0:
-			self.declare_reaction_at_level(node.reaction, 0)
-			return 0
+			self.declare_reaction_at_level(node.reaction, level)
+			return
 		# print(node.reaction.name, node.level)
-		successor_levels = [self.create_reaction_level(n) for n in node.children]
-		level = 1 + min(successor_levels)
+		# successor_levels = [self.create_reaction_level(n) for n in node.children]
+		# level = 1 + min(successor_levels)
 		self.declare_reaction_at_level(node.reaction, level)
-		return level
+		_ = [self.create_reaction_level(n, level + 1) for n in node.children]
 
 	def declare_reaction_at_level(self, reaction, level):
 		'''
