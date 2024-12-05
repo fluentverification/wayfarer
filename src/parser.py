@@ -39,15 +39,27 @@ def create_transition(transition_line, species_idxes):
 	always_enabled = False
 	is_consumer = False
 	for reactant in reactants:
+		rcount = 1
 		if reactant == "0":
 			always_enabled = True
 			break
-		transition_vector[species_idxes[reactant]] -= 1
+		elif '*' in reactant:
+			reactant, rcount_str = reactant.split("*")
+			reactant = reactant.strip()
+			# TODO: better error handling for malformed line
+			rcount = int(rcount_str)
+		transition_vector[species_idxes[reactant]] -= rcount
 	for product in products:
+		pcount = 1
 		if product == "0":
 			is_consumer = True
 			break
-		transition_vector[species_idxes[product]] += 1
+		elif '*' in product:
+			product, pcount_str = product.split("*")
+			product = product.strip()
+			# TODO: better error handling for malformed line
+			pcount = int(pcount_str)
+		transition_vector[species_idxes[product]] += pcount
 	# Is 1.0 iff is reactant
 	rate_mul_vector = np.array([float(elem < 0) for elem in transition_vector])
 	# The rate, from rate constant k and reactants A, B, is k * A^count(A) * B^count(B)
