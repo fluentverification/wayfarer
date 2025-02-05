@@ -101,7 +101,7 @@ class RandomAccessSparseMatrixBuilder:
 				continue
 			max_entry = max(self.from_list[i])
 			max_rate = max_entry.val
-			if not self.exit_rates[i] >= max_rate:
+			if self.exit_rates[i] is not None and not self.exit_rates[i] >= max_rate:
 				print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
 			assert(self.exit_rates[i] >= max_rate or math.isclose(max_rate, self.exit_rates[i]))
 
