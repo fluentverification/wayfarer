@@ -124,8 +124,8 @@ class State:
 	total_offset : np.matrix = None
 	# Cycle and commute stuff. There is a list of known useful cycles, orthocycles,
 	# and trivially commutable transitions
-	orthocycles            : list = []
-	non_orthocycles        : list = []
+	orthocycles			: list = []
+	non_orthocycles		: list = []
 	commutable_transitions : list = []
 	# @staticmethod
 	def initialize_static_vars(crn, dep, single_order=False):
@@ -219,7 +219,9 @@ class State:
 		total_rate = 0.0
 		for t in transitions:
 			if t.enabled(vec):
-				total_rate += t.rate_finder(vec)
+				rate = t.rate_finder(vec)
+				assert(rate >= 0)
+				total_rate += rate
 		return total_rate
 
 	def successors(self, only_tuples : bool = False, all_successors : bool = False): # -> tuple:
@@ -247,11 +249,12 @@ class State:
 				update_vectors = State.crn.transitions # subspace.get_update_vectors(State.crn)
 			else:
 				update_vectors = subspace.get_update_vectors() # State.crn)
-		# print(f"Update vectors {[str(vec) for vec in update_vectors]}")
+		# print(f"Update vectors {[str(vec.name) for vec in update_vectors]}")
 		for t in update_vectors:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)
+				assert(rate >= 0)
 				total_outgoing_rate += rate
 				if only_tuples:
 					succ.append((tuple(self.vec + t.vector), rate))

@@ -193,9 +193,11 @@ class DepGraph:
 			# is the vertical padding, and the second is the horizontal. Each sub tuple
 			# is of the form (before_padding, after_padding), so to pad horizontally
 			# with zeros N times after, you'd have ((0, 0), (0, N))
-			Ap = np.matrix(np.pad(A, pad_width=((0, 0), (0, pad - A.shape[1]))))
-			M0p = np.matrix(np.pad(M0, pad_width=((0, 0), (0, pad - M0.shape[1]))))
-			B = np.matrix(np.block([[M0p], [Ap]]))
+			# Ap = np.matrix(np.pad(A, pad_width=((0, 0), (0, pad - A.shape[1])))).T
+			# M0p = np.matrix(np.pad(M0, pad_width=((0, 0), (0, pad - M0.shape[1])))).T
+			# print(M0p.shape, Ap.shape)
+			B = np.matrix(np.block([[M0.T], [A.T]])) # np.matrix(np.block([[M0p], [Ap]]))
+			# print(B.shape)
 			M_I = null(B)
 			# Now to find the offset vector, we must find the minimal solution f to the following equation
 			# M_n x_n + s_0 + f = M_I x_I + (s_p + s_0), thus M_n x_n + f = M_I x_I + s_p
@@ -324,7 +326,9 @@ class DepGraph:
 		'''
 		while len(self.reaction_levels) <= level:
 			self.reaction_levels.append([])
-		self.reaction_levels[level].append(reaction)
+		level_list = self.reaction_levels[level]
+		if reaction not in level_list:
+			level_list.append(reaction)
 
 	def declare_producer(self, reaction, species):
 		'''
