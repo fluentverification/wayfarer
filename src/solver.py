@@ -103,7 +103,7 @@ class RandomAccessSparseMatrixBuilder:
 			max_rate = max_entry.val
 			if self.exit_rates[i] is not None and not self.exit_rates[i] >= max_rate:
 				print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
-			assert(self.exit_rates[i] >= max_rate or math.isclose(max_rate, self.exit_rates[i]))
+			assert(self.exit_rates[i] is None or (self.exit_rates[i] >= max_rate or math.isclose(max_rate, self.exit_rates[i])))
 
 def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False, single_order=False):
 	global all_states
