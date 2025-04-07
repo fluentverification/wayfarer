@@ -58,7 +58,7 @@ Returns a tuple (species_name, quantity)
 	'''
 	split_line = s.split("*")
 	if len(split_line) == 1:
-		return split_line, 1
+		return split_line[0], 1
 	elif len(split_line) == 2:
 		first, second = split_line
 		if first.isnumeric():
