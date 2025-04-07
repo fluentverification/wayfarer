@@ -23,7 +23,7 @@ class Transition:
 	# vector      #: np.vector
 	# enabled     #: lambda
 	# rate_finder #: lambda
-	def __init__(self, vector, enabled, rate_finder, name=None, rate_constant=None):
+	def __init__(self, vector, enabled, rate_finder, name=None, rate_constant=None, dim_bounds=None):
 		self.vector = np.array(vector)
 		self.vec_as_mat = np.matrix(vector).T
 		self.enabled_lambda = enabled
@@ -32,9 +32,16 @@ class Transition:
 		self.name = name
 		self.rate_constant = rate_constant
 		self.in_s0 = False
+		self.dim_bounds = dim_bounds
 
 	def enabled(self, state):
-		return self.enabled_lambda(state)
+		if self.dim_bounds is None:
+			return self.enabled_lambda(state)
+		else:
+			# This checks to see if we impose an upper limit on the variable at index i and then if so,
+			# if we are below that upper limit.
+			idx_passes = lambda i : self.dim_bounds[i] == -1 or self.vector[i] + state[i] < self.dim_bounds[i]
+			return np.all([idx_passes(i) for i in range(len(state))]) and self.enabled_lambda(state)
 
 class SortableTransition:
 	def __init__(self, transition : Transition, index : int):

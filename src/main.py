@@ -11,7 +11,7 @@ import time
 
 store_traces = False
 
-def basic_priority(filename, num):
+def basic_priority(filename, bound_fname, num):
 	crn = parse_ragtimer(filename)
 
 	print("========================================================")
@@ -29,7 +29,7 @@ def basic_priority(filename, num):
 	# end_time = time.time()
 	# print(f"Total time {end_time - start_time} s")
 
-def random(filename, num):
+def random(filename, bound_fname, num):
 	crn = parse_ragtimer(filename)
 	print("========================================================")
 	print("Random Exploration")
@@ -39,7 +39,7 @@ def random(filename, num):
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 
-def subspace_priority(filename, num):
+def subspace_priority(filename, bound_fname, num):
 	dep, crn = parse_dependency_ragtimer(filename)
 	print("========================================================")
 	print("Targeted Exploration (Subspace)")
@@ -49,7 +49,7 @@ def subspace_priority(filename, num):
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 
-def subspace_priority_solver(filename, num, time_bound, agnostic=False, piped=False, all_expand=False, single_order=False, use_rate_const=False):
+def subspace_priority_solver(filename, bound_fname, num, time_bound, agnostic=False, piped=False, all_expand=False, single_order=False, use_rate_const=False):
 	dep, crn = parse_dependency_ragtimer(filename, agnostic=agnostic)
 	print("========================================================")
 	print("Targeted Exploration (Subspace - With Solver)")
@@ -70,6 +70,8 @@ if __name__=="__main__":
 		, epilog="Developed at USU")
 	parser.add_argument("-r", "--ragtimer", default=None,
 			help="The name of the .ragtimer file to check")
+	parser.add_argument("-b", "--variable_bounds", default=None,
+			help="The name of the file that imposes upper bounds on the variables")
 	parser.add_argument("-n", "--number", default=3,
 			help="The number of either counterexamples or satisfying states to find, if without or with solver respectively")
 	parser.add_argument("-p", "--primitive", action="store_true",
@@ -113,7 +115,7 @@ if __name__=="__main__":
 
 	SolverSettings.COMPUTE_UPPER_BOUND = args.upper
 	if args.subspace:
-		subspace_priority(args.ragtimer, num)
+		subspace_priority(args.ragtimer, args.variable_bounds, num=num)
 
 	if args.subspace_with_solver:
 		t = None
@@ -122,7 +124,8 @@ if __name__=="__main__":
 		elif args.time is not None:
 			t = int(args.time)
 		subspace_priority_solver(args.ragtimer
-						, num
+						, args.variable_bounds
+						, num=num
 						, time_bound=t
 						, agnostic=args.agnostic
 						, piped=args.piped
@@ -136,7 +139,8 @@ if __name__=="__main__":
 		elif args.time is not None:
 			t = int(args.time)
 		subspace_priority_solver(args.ragtimer
-						, num
+						, args.variable_bounds
+						, num=num
 						, time_bound=t
 						, agnostic=args.agnostic
 						, piped=args.piped
@@ -145,8 +149,8 @@ if __name__=="__main__":
 						, use_rate_const=args.rate_constant)
 
 	if args.primitive:
-		basic_priority(args.ragtimer, num)
+		basic_priority(args.ragtimer, args.variable_bounds, num=num)
 
 	if args.random:
-		random(args.ragtimer, num)
+		random(args.ragtimer, args.variable_bounds, num=num)
 

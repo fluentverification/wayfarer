@@ -96,7 +96,8 @@ def create_transition(transition_line, species_idxes):
 				, tname
 				, rate_const)
 
-def parse_ragtimer(filename):
+def parse_ragtimer(filename, dimension_bounds_filename=None):
+	dimension_bounds = None if dimension_bounds_filename is None else create_dimension_bounds(dimension_bounds_filename)
 	with open(filename, 'r') as rag:
 		lines = rag.readlines()
 		assert(len(lines) >= 4)
@@ -109,6 +110,12 @@ def parse_ragtimer(filename):
 		boundary = [create_bound(bound_val) for bound_val in bound_vals]
 		transitions = [create_transition(line, species_idxes) for line in lines[3:]]
 		return Crn(transitions, boundary, init_state)
+
+def create_dimension_bounds(dimension_bounds_filename : str) -> np.array:
+	with open(dimension_bounds_filename, 'r') as bfile:
+		lines = list(filter(lambda line: line != "", bfile.readlines()))
+		assert(len(lines) == 1)
+		return np.array([int(elem) for elem in lines[0].strip().split("\t")])
 
 def parse_dependency_ragtimer(filename: str, agnostic : bool =False):
 	with open(filename, 'r') as rag:
