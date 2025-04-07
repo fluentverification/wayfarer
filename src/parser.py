@@ -52,6 +52,20 @@ def create_bound(bound_text):
 		return Bound(0, BoundTypes.DONT_CARE)
 	return Bound(bound_int, BoundTypes.EQUAL)
 
+def get_val_quantity(s: str) -> tuple:
+	'''
+Returns a tuple (species_name, quantity)
+	'''
+	split_line = s.split("*")
+	if len(split_line) == 1:
+		return split_line, 1
+	elif len(split_line) == 2:
+		first, second = split_line
+		if first.isnumeric():
+			return second, int(first)
+		else:
+			return first, int(second)
+
 def create_transition(transition_line, species_idxes, dimension_bounds=None):
 	transition_info = transition_line.split("\t")
 	sep_idx = transition_info.index(">")
@@ -64,14 +78,14 @@ def create_transition(transition_line, species_idxes, dimension_bounds=None):
 	is_consumer = False
 	# Is 1.0 iff is reactant
 	rate_mul_vector = np.array([0.0 for _ in transition_vector])
-	for reactant in reactants:
+	for reactant, count in map(get_val_quantity, reactants):
 		if reactant == "0":
 			always_enabled = True
 			break
 		idx = species_idxes[reactant]
 		transition_vector[idx] -= 1
 		rate_mul_vector[idx] = 1.0
-	for product in products:
+	for product in map(get_val_quantity, products):
 		if product == "0":
 			is_consumer = True
 			break
