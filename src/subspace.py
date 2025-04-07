@@ -254,7 +254,9 @@ class State:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)
-				assert(rate >= 0)
+				# if we get a zero rate we can ignore things
+				if rate == 0.0:
+					continue
 				total_outgoing_rate += rate
 				if only_tuples:
 					succ.append((tuple(self.vec + t.vector), rate))
