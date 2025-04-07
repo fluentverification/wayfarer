@@ -78,7 +78,8 @@ def create_transition(transition_line, species_idxes, dimension_bounds=None):
 	is_consumer = False
 	# Is 1.0 iff is reactant
 	rate_mul_vector = np.array([0.0 for _ in transition_vector])
-	for reactant, count in map(get_val_quantity, reactants):
+	reactant_tuples = map(get_val_quantity, reactants)
+	for reactant, count in reactant_tuples:
 		if reactant == "0":
 			always_enabled = True
 			break
@@ -103,7 +104,7 @@ def create_transition(transition_line, species_idxes, dimension_bounds=None):
 					, tname
 					, rate_const
 					, dim_bounds=dimension_bounds)
-	reactant_idxes = [species_idxes[reactant] for reactant in reactants]
+	reactant_idxes = [species_idxes[reactant] for reactant, _ in reactant_tuples]
 	# Require all reactants to be strictly greater than zero
 	return Transition(transition_vector
 				, lambda state : np.all([state[i] > 0 for i in reactant_idxes])
