@@ -220,7 +220,7 @@ class State:
 		for t in transitions:
 			if t.enabled(vec):
 				rate = t.rate_finder(vec)
-				# assert(rate >= 0)
+				assert(rate >= 0)
 				if rate == 0.0:
 					continue
 				total_rate += rate
@@ -256,6 +256,7 @@ class State:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)
+				assert(rate >= 0.0)
 				# if we get a zero rate we can ignore things
 				if rate == 0.0:
 					continue
