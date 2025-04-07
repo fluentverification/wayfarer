@@ -83,9 +83,9 @@ def create_transition(transition_line, species_idxes, dimension_bounds=None):
 			always_enabled = True
 			break
 		idx = species_idxes[reactant]
-		transition_vector[idx] -= 1
+		transition_vector[idx] -= count
 		rate_mul_vector[idx] = 1.0
-	for product in map(get_val_quantity, products):
+	for product, count in map(get_val_quantity, products):
 		if product == "0":
 			is_consumer = True
 			break
