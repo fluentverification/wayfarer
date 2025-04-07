@@ -12,7 +12,7 @@ import time
 store_traces = False
 
 def basic_priority(filename, bound_fname, num):
-	crn = parse_ragtimer(filename)
+	crn = parse_ragtimer(filename, bound_fname)
 
 	print("========================================================")
 	print("Targeted Exploration (just distance)")
@@ -30,7 +30,7 @@ def basic_priority(filename, bound_fname, num):
 	# print(f"Total time {end_time - start_time} s")
 
 def random(filename, bound_fname, num):
-	crn = parse_ragtimer(filename)
+	crn = parse_ragtimer(filename, bound_fname)
 	print("========================================================")
 	print("Random Exploration")
 	print("========================================================")
@@ -50,7 +50,7 @@ def subspace_priority(filename, bound_fname, num):
 	print(f"Total time {end_time - start_time} s")
 
 def subspace_priority_solver(filename, bound_fname, num, time_bound, agnostic=False, piped=False, all_expand=False, single_order=False, use_rate_const=False):
-	dep, crn = parse_dependency_ragtimer(filename, agnostic=agnostic)
+	dep, crn = parse_dependency_ragtimer(filename, agnostic=agnostic, dimension_bounds_filename=bound_fname)
 	print("========================================================")
 	print("Targeted Exploration (Subspace - With Solver)")
 	print("========================================================")

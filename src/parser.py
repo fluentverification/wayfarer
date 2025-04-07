@@ -52,7 +52,7 @@ def create_bound(bound_text):
 		return Bound(0, BoundTypes.DONT_CARE)
 	return Bound(bound_int, BoundTypes.EQUAL)
 
-def create_transition(transition_line, species_idxes):
+def create_transition(transition_line, species_idxes, dimension_bounds=None):
 	transition_info = transition_line.split("\t")
 	sep_idx = transition_info.index(">")
 	tname = transition_info[0]
@@ -87,17 +87,21 @@ def create_transition(transition_line, species_idxes):
 					, lambda state : True
 					, rate_finder
 					, tname
-					, rate_const)
+					, rate_const
+					, dim_bounds=dimension_bounds)
 	reactant_idxes = [species_idxes[reactant] for reactant in reactants]
 	# Require all reactants to be strictly greater than zero
 	return Transition(transition_vector
 				, lambda state : np.all([state[i] > 0 for i in reactant_idxes])
 				, rate_finder
 				, tname
-				, rate_const)
+				, rate_const
+				, dim_bounds=dimension_bounds)
 
 def parse_ragtimer(filename, dimension_bounds_filename=None):
 	dimension_bounds = None if dimension_bounds_filename is None else create_dimension_bounds(dimension_bounds_filename)
+	# if dimension_bounds is not None:
+		# print(f"Got dimension bounds {dimension_bounds}")
 	with open(filename, 'r') as rag:
 		lines = rag.readlines()
 		assert(len(lines) >= 4)
@@ -108,7 +112,7 @@ def parse_ragtimer(filename, dimension_bounds_filename=None):
 		# Get the boundary condition (exact equal)
 		bound_vals = lines[2].split("\t")
 		boundary = [create_bound(bound_val) for bound_val in bound_vals]
-		transitions = [create_transition(line, species_idxes) for line in lines[3:]]
+		transitions = [create_transition(line, species_idxes, dimension_bounds) for line in lines[3:]]
 		return Crn(transitions, boundary, init_state)
 
 def create_dimension_bounds(dimension_bounds_filename : str) -> np.array:
@@ -117,11 +121,11 @@ def create_dimension_bounds(dimension_bounds_filename : str) -> np.array:
 		assert(len(lines) == 1)
 		return np.array([int(elem) for elem in lines[0].strip().split("\t")])
 
-def parse_dependency_ragtimer(filename: str, agnostic : bool =False):
+def parse_dependency_ragtimer(filename: str, agnostic : bool =False, dimension_bounds_filename : str | None = None):
 	with open(filename, 'r') as rag:
 		lines = rag.readlines()
 		assert(len(lines) >= 4)
-		return DepGraph(lines, agnostic=agnostic), parse_ragtimer(filename)
+		return DepGraph(lines, agnostic=agnostic), parse_ragtimer(filename, dimension_bounds_filename=dimension_bounds_filename)
 
 def create_piped(crn : Crn, use_rc : bool = False):
 	'''
