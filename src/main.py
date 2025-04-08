@@ -119,10 +119,10 @@ if __name__=="__main__":
 
 	if args.subspace_with_solver:
 		t = None
-		if args.time is not None and not args.time.isnumeric():
+		if args.time is not None and not args.time.replace(".", "").isnumeric():
 			print(f"Time bound {args.time} is invalid. Will ignore.")
 		elif args.time is not None:
-			t = int(args.time)
+			t = float(args.time)
 		subspace_priority_solver(args.ragtimer
 						, args.variable_bounds
 						, num=num
@@ -134,10 +134,10 @@ if __name__=="__main__":
 
 	if args.solver:
 		t = None
-		if args.time is not None and not args.time.isnumeric():
+		if args.time is not None and not args.time.replace(".", "").isnumeric():
 			print(f"Time bound {args.time} is invalid. Will ignore.")
 		elif args.time is not None:
-			t = int(args.time)
+			t = float(args.time)
 		subspace_priority_solver(args.ragtimer
 						, args.variable_bounds
 						, num=num
