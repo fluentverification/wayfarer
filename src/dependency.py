@@ -162,17 +162,15 @@ class DepGraph:
 		2. Then, we must find the shortest distance from Sn to this intersection
 		'''
 		sa = self.particular_solution - self.init_state
-		Avecs = self.sat_basis.copy()
-		for t in sn.transitions:
-			Avecs.append(-np.matrix(t.vector).T)
+		Mpsivecs = self.sat_basis.copy()
 		# print(Avecs)
-		A = np.column_stack(Avecs)
+		Mpsi = np.column_stack(Mpsivecs)
 		# print(A)
 
 		if s0 is None:
 			# If this is true we can short circuit knowing that the
 			# shortest distance is contained in S0 already
-			offset_nonprojected = sa - A * np.linalg.pinv(A.T * A, rcond=1e-3) * A.T * sa
+			offset_nonprojected = sa - Mpsi * np.linalg.pinv(Mpsi.T * Mpsi, rcond=1e-3) * Mpsi.T * sa
 			# Because the pinv is calculated numerically, on some models where we should
 			# get an offset of zero-vector, we get something like [1e-14, 1e-15, ...]. These
 			# perturbations actually affect the search distance, so we will just zero it here.
@@ -184,36 +182,16 @@ class DepGraph:
 				return zeros
 			return offset_nonprojected
 		else:
-			# There's a lot of math attempted here but there are some limitations imposed
-			# by the ragtimer file description that we can just generate f by taking the difference
-			# in any target dimension from the initial state. More robust math can come in when
-			# wayfarer supports more complex properties.
-			# f = np.multiply(sa, self.mask)
-			# First, we must find the intersection, which is all solutions to the equation
-			# v = M_I x_I + s_I. Thus, we must find M_I and s_I. s_I is easy.
-			# si = self.particular_solution
-			# print(si)
-			# # M_I is the null vectors of the matrix [ M_0 \\ M_S ]
-			# M0 = s0.M.copy()
-			# pad = max(M0.shape[1], A.shape[1])
-			# # Pad. No vertical padding
-			# # Explaination of pad_width: it is a tuple of tuples. The first sub tuple
-			# # is the vertical padding, and the second is the horizontal. Each sub tuple
-			# # is of the form (before_padding, after_padding), so to pad horizontally
-			# # with zeros N times after, you'd have ((0, 0), (0, N))
-			# Ap = np.matrix(np.pad(A, pad_width=((0, 0), (0, pad - A.shape[1]))))
-			# M0p = np.matrix(np.pad(M0, pad_width=((0, 0), (0, pad - M0.shape[1]))))
-			# # print(M0p.shape, Ap.shape)
-			# B = np.matrix(np.block([[M0p], [Ap]])) # np.matrix(np.block([[M0p], [Ap]]))
-			# print(B)
-			# M_I = null(B)
-			# # Now to find the offset vector, we must find the minimal solution f to the following equation
-			# # M_n x_n + s_0 + f = M_I x_I + (s_p + s_0), thus M_n x_n + f = M_I x_I + s_p
-			# # Therefore we find f = [M_I -M_n] [x_I x_n] + s_p, minimizing |f|
-			# P_I = M_I * np.linalg.pinv(M_I.T * M_I) * M_I.T
-			# # Project si onto M_I and find the residual
-			# f = si - P_I * si
-			print(f)
+			b = self.particular_solution - 2 * self.init_state
+			# print(s0.M, Mpsi)
+			A = np.block([s0.M, -Mpsi])
+			# print(A)
+			xy, _, _, _ = np.linalg.lstsq(A, b, rcond=None)
+			x = xy[:s0.M.shape[1]]
+			# y = xy[s0.M.shape[1]:]
+
+			f = s0.M * x + self.init_state
+			# print(f)
 			zeros = np.zeros(f.shape)
 			if np.isclose(f, zeros).all():
 				# This also short-circuits the next projection step
