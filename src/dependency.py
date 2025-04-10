@@ -152,7 +152,7 @@ class DepGraph:
 		self.graph_root = self.create_graph(change)
 		self.create_reaction_levels()
 
-	def create_offset_vector(self, sn : Subspace, s0 : Subspace = None):
+	def create_offset_vector(self, sn : Subspace, s0 : Subspace | None = None):
 		'''
 		Creates an offset vector, f, s.t. $f \\in S0$ and f minimizes the distance from
 		Sn to Ss (the solution space).
@@ -165,7 +165,9 @@ class DepGraph:
 		Avecs = self.sat_basis.copy()
 		for t in sn.transitions:
 			Avecs.append(-np.matrix(t.vector).T)
+		# print(Avecs)
 		A = np.column_stack(Avecs)
+		# print(A)
 
 		if s0 is None:
 			# If this is true we can short circuit knowing that the
@@ -182,29 +184,36 @@ class DepGraph:
 				return zeros
 			return offset_nonprojected
 		else:
+			# There's a lot of math attempted here but there are some limitations imposed
+			# by the ragtimer file description that we can just generate f by taking the difference
+			# in any target dimension from the initial state. More robust math can come in when
+			# wayfarer supports more complex properties.
+			# f = np.multiply(sa, self.mask)
 			# First, we must find the intersection, which is all solutions to the equation
 			# v = M_I x_I + s_I. Thus, we must find M_I and s_I. s_I is easy.
-			si = self.particular_solution
-			# M_I is the null vectors of the matrix [ M_0 \\ M_S ]
-			M0 = s0.M.copy()
-			pad = max(M0.shape[1], A.shape[1])
-			# Pad. No vertical padding
-			# Explaination of pad_width: it is a tuple of tuples. The first sub tuple
-			# is the vertical padding, and the second is the horizontal. Each sub tuple
-			# is of the form (before_padding, after_padding), so to pad horizontally
-			# with zeros N times after, you'd have ((0, 0), (0, N))
-			# Ap = np.matrix(np.pad(A, pad_width=((0, 0), (0, pad - A.shape[1])))).T
-			# M0p = np.matrix(np.pad(M0, pad_width=((0, 0), (0, pad - M0.shape[1])))).T
-			# print(M0p.shape, Ap.shape)
-			B = np.matrix(np.block([[M0.T], [A.T]])) # np.matrix(np.block([[M0p], [Ap]]))
-			# print(B.shape)
-			M_I = null(B)
-			# Now to find the offset vector, we must find the minimal solution f to the following equation
-			# M_n x_n + s_0 + f = M_I x_I + (s_p + s_0), thus M_n x_n + f = M_I x_I + s_p
-			# Therefore we find f = [M_I -M_n] [x_I x_n] + s_p, minimizing |f|
-			P_I = M_I * np.linalg.pinv(M_I.T * M_I) * M_I.T
-			# Project si onto M_I and find the residual
-			f = si - P_I * si
+			# si = self.particular_solution
+			# print(si)
+			# # M_I is the null vectors of the matrix [ M_0 \\ M_S ]
+			# M0 = s0.M.copy()
+			# pad = max(M0.shape[1], A.shape[1])
+			# # Pad. No vertical padding
+			# # Explaination of pad_width: it is a tuple of tuples. The first sub tuple
+			# # is the vertical padding, and the second is the horizontal. Each sub tuple
+			# # is of the form (before_padding, after_padding), so to pad horizontally
+			# # with zeros N times after, you'd have ((0, 0), (0, N))
+			# Ap = np.matrix(np.pad(A, pad_width=((0, 0), (0, pad - A.shape[1]))))
+			# M0p = np.matrix(np.pad(M0, pad_width=((0, 0), (0, pad - M0.shape[1]))))
+			# # print(M0p.shape, Ap.shape)
+			# B = np.matrix(np.block([[M0p], [Ap]])) # np.matrix(np.block([[M0p], [Ap]]))
+			# print(B)
+			# M_I = null(B)
+			# # Now to find the offset vector, we must find the minimal solution f to the following equation
+			# # M_n x_n + s_0 + f = M_I x_I + (s_p + s_0), thus M_n x_n + f = M_I x_I + s_p
+			# # Therefore we find f = [M_I -M_n] [x_I x_n] + s_p, minimizing |f|
+			# P_I = M_I * np.linalg.pinv(M_I.T * M_I) * M_I.T
+			# # Project si onto M_I and find the residual
+			# f = si - P_I * si
+			print(f)
 			zeros = np.zeros(f.shape)
 			if np.isclose(f, zeros).all():
 				# This also short-circuits the next projection step
