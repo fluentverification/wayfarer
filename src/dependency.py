@@ -191,7 +191,8 @@ class DepGraph:
 			# y = xy[s0.M.shape[1]:]
 
 			f = s0.M * x + self.init_state
-			# print(f)
+			f = np.round(f)
+			print(f)
 			zeros = np.zeros(f.shape)
 			if np.isclose(f, zeros).all():
 				# This also short-circuits the next projection step
