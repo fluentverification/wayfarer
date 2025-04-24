@@ -7,6 +7,7 @@ from dependency import *
 import sys
 # Cursed
 import importlib
+import importlib.util
 
 # A dynamically loaded function pointer from a user file to customize how rates are found
 custom_rate_finder = None
