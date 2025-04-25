@@ -163,6 +163,8 @@ class DepGraph:
 		'''
 		sa = self.particular_solution - self.init_state
 		Mpsivecs = self.sat_basis.copy()
+		if len(Mpsivecs) == 0:
+			return sa
 		# print(Avecs)
 		Mpsi = np.column_stack(Mpsivecs)
 		# print(A)
