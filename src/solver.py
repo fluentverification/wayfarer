@@ -105,10 +105,10 @@ class RandomAccessSparseMatrixBuilder:
 				print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
 			assert(self.exit_rates[i] is None or (self.exit_rates[i] >= max_rate or math.isclose(max_rate, self.exit_rates[i])))
 
-def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False, single_order=False):
+def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False, single_order=False, cnc=False):
 	global all_states
 	global state_ids
-	State.initialize_static_vars(crn, dep, single_order=single_order)
+	State.initialize_static_vars(crn, dep, single_order=single_order, cnc=cnc)
 	state_ids = {}
 	all_states = []
 	# Add the absorbing state
@@ -228,6 +228,13 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 				deadlock_idxs.append(state.idx)
 				state.perimeter = False
 				continue
+			else:
+				if len(State.commutable_transitions) > 0:
+					pass # TODO
+				if len(State.orthocycles) > 0:
+					pass # TODO
+				if len(State.non_orthocycles) > 0:
+					pass # TODO
 			# Expand the state and create transitions ONLY TO EXISTING STATES
 			successors, total_exit_rate = state.successors(True)
 			total_full_rate = state.get_total_outgoing_rate()

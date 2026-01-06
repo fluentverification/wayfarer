@@ -128,9 +128,12 @@ class State:
 	non_orthocycles		: list = []
 	commutable_transitions : list = []
 	# @staticmethod
-	def initialize_static_vars(crn, dep, single_order=False):
+	def initialize_static_vars(crn, dep, single_order=False, cnc=False):
 		if not single_order:
 			State.subspaces = dep.create_subspaces(crn)
+			# Commutable transitions
+			commutable_transitions = get_commutable_transitions(crn, State.subspaces[0], State.subspaces[len(subspaces) - 1])
+
 		else:
 			# Do not create subspaces. Will only compare actual euclidian distance
 			State.subspaces = []
@@ -151,6 +154,7 @@ class State:
 			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
 		to_frac_matrix(State.total_offset)
 		print(f"{dep}")
+
 
 	def __init__(self, vec, idx=None, reach=1.0):
 		'''
