@@ -383,3 +383,4 @@ class DepGraph:
 		subspaces.reverse()
 		# print([str(subspace) for subspace in subspaces])
 		return subspaces
+

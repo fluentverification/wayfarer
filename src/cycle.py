@@ -159,10 +159,15 @@ Creates cycles from cycle vectors
 		transitions = []
 		while not np.all(v_counter == 0):
 			for idx in sorted_transitions:
-				transitions.append(crn.transitions[i])
+				transitions.append(crn.transitions[idx])
 				v_counter[idx] -= 1
 		cycles.append(Cycle(transitions, crn))
 
 	print(f"Found cycles: {cycles}")
 
 	return cycles
+
+def is_cyclable(transition, s0) -> bool:
+	P = s0.P
+	r = transition.vec_as_mat
+	return np.isclose(P * r, r).all()

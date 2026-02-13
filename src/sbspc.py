@@ -112,7 +112,6 @@ class Subspace:
 	def __str__(self):
 		return f"Subspace with basis reactions {[str(t) for t in self.transitions]}"
 
-
 class State:
 	# Stores in ASCENDING ORDER, i.e., S0 \in S1 \in S2 ...
 	subspaces : list = []
@@ -133,8 +132,10 @@ class State:
 		if not single_order:
 			State.subspaces = dep.create_subspaces(crn)
 			# Commutable transitions
-			commutable_transitions = get_commutable_transitions(crn, State.subspaces[0], State.subspaces[len(State.subspaces) - 1])
-			# TODO: Populate cycles
+			State.commutable_transitions = get_commutable_transitions(crn, State.subspaces[0], State.subspaces[len(State.subspaces) - 1])
+			# Populate cycles
+			ctrans = [transition for transition in crn.transitions if is_cyclable(transition, State.subspaces[0])]
+			cycles = get_cycles(crn, ctrans)
 
 		else:
 			# Do not create subspaces. Will only compare actual euclidian distance
