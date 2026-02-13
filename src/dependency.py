@@ -207,7 +207,7 @@ class DepGraph:
 		'''
 		# Decreases the values in the change vector
 		successors = []
-		hashable_change = tuple([float(f) for f in change])
+		hashable_change = tuple([f[0,0] for f in change])
 		if hashable_change in self.visited_changes:
 			return
 		self.visited_changes[hashable_change] = True

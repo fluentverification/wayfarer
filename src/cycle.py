@@ -2,7 +2,7 @@ import numpy as np
 from scipy.linalg import null_space
 
 from crn import *
-from subspace import *
+from subspace import Subspace
 
 # TODO: are we sure we need both?
 from fractions import Fraction
@@ -25,11 +25,13 @@ class Cycle:
 			sum += r.vec_as_mat
 		assert(np.all(np.is_close(sum, 0)))
 
-	def apply_cycle(self, state : np.matrix) -> list:
+	def apply_cycle(self, state : np.matrix) -> list | None:
 		s = state
 		new_states = []
 		for r in self.__ordered_reactions:
 			s += r.vec_as_mat
+			if np.any(s < 0):
+				return None
 			new_states.append(s)
 		return new_states
 
