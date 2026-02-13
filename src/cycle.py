@@ -104,6 +104,11 @@ and ensures that all of the nullvectors are also of type int.
 	'''
 	return null_space(R) # Todo: turn into list of columns
 
+def get_cycles(crn: Crn, transitions: list, num: int = 5) -> list:
+	matrix = np.column_stack([t.vec_as_mat for t in transitions])
+	vecs = get_cycle_vectors(matrix, num)
+	return cycles_from_cycle_vectors(vecs, crn)
+
 def get_cycle_vectors(R : np.matrix, num=5):
 	'''
 Any positive integer linear combination of the nullvectors of R are the cycles
@@ -157,5 +162,7 @@ Creates cycles from cycle vectors
 				transitions.append(crn.transitions[i])
 				v_counter[idx] -= 1
 		cycles.append(Cycle(transitions, crn))
+
+	print(f"Found cycles: {cycles}")
 
 	return cycles

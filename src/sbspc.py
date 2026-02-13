@@ -134,6 +134,7 @@ class State:
 			State.subspaces = dep.create_subspaces(crn)
 			# Commutable transitions
 			commutable_transitions = get_commutable_transitions(crn, State.subspaces[0], State.subspaces[len(State.subspaces) - 1])
+			# TODO: Populate cycles
 
 		else:
 			# Do not create subspaces. Will only compare actual euclidian distance
