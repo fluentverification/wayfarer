@@ -4,7 +4,7 @@ from distance import *
 from counterexample import *
 from parser import *
 from solver import *
-from subspace import Subspace
+from sbspc import Subspace
 
 import argparse
 import time

@@ -1,6 +1,6 @@
 from distance import *
 from crn import *
-from subspace import *
+from sbspc import *
 
 import sys
 import math

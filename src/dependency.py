@@ -3,7 +3,7 @@
 import numpy as np
 
 from crn import *
-from subspace import *
+from sbspc import *
 from util import *
 
 # from stormpy import Rational

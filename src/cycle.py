@@ -2,7 +2,7 @@ import numpy as np
 from scipy.linalg import null_space
 
 from crn import *
-from subspace import Subspace
+# from sbspc import Subspace
 
 # TODO: are we sure we need both?
 from fractions import Fraction
@@ -35,11 +35,11 @@ class Cycle:
 			new_states.append(s)
 		return new_states
 
-def get_commutable_transitions(crn : Crn, s0 : Subspace, ss : Subspace) -> list:
+def get_commutable_transitions(crn : Crn, s0, ss) -> list:
 	transitions = []
 	for t in crn.transitions:
 		# TODO: need offset?
-		if np.all(np.is_close(s0.P * t.vec_as_mat, 0)).all() and np.all(np.isclose(ss.P * t.vec_as_mat, t.vec_as_mat)):
+		if np.all(np.isclose(s0.P * t.vec_as_mat, 0)).all() and np.all(np.isclose(ss.P * t.vec_as_mat, t.vec_as_mat)):
 			transitions.append(t)
 	return t
 
