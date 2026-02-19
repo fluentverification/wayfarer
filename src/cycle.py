@@ -127,6 +127,7 @@ def get_cycle_vectors(R : np.matrix, num=5):
 Any positive integer linear combination of the nullvectors of R are the cycles
 of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 	'''
+	print(R)
 	# TODO: add support for combinations beyond that
 	print("[WARNING] Wayfarer only supports \"first level\" cycle detection currently. This means only linear combinations of null vectors with coefficients equal to 1 or 0")
 	cycles = []
@@ -136,7 +137,7 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 
 	# Create variables for integer null vectors with bounds 0-1
 	n = R.shape[1] # Number of columns
-	x = [LpVariable(f'x{i}', lowBound=0, upBound=1, cat='Integer') for i in range(n)]
+	x = [LpVariable(f'x{i}', lowBound=0, upBound=2, cat='Integer') for i in range(n)]
 
 	while len(cycles) < num:
 		# clear previous problem
@@ -146,7 +147,7 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 			problem += lpSum(row[j] * x[j] for j in range(n)) == 0
 
 		# Minimize L1 norm (smaller cycles)
-		problem += lpSum(x)
+		# problem += lpSum(x)
 
 		# Add a constraint to ensure x is not the zero vector
 		problem += lpSum(x) >= 1  # At least one component must be greater than zero
@@ -154,21 +155,20 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 		# Exclude previously found solutions
 		for cycle in cycles:
 			# Add constraints to ensure not equal to any previously found vector
-			problem += lpSum([x[i] - cycle[i] for i in range(n)]) >= 1  # At least one component is different
-			problem += lpSum([cycle[i] - x[i] for i in range(n)]) >= 1  # Ensure no matching components
+			problem += lpSum([x[i] - cycle[i] for i in range(n)]) != 1  # At least one component is different
+			problem += lpSum([cycle[i] - x[i] for i in range(n)]) != 1  # Ensure no matching components
 
 		# Solve the problem
 		problem.solve()
 
 		# Check results
-		print(type(LpStatus[problem.status]))
-		print(LpStatus)
-		if problem.status == LpOptimal:
+		print(LpStatus[problem.status])
+		if problem.status == LpStatusOptimal:
 			cycle = [value(var) for var in x]
 			# print(f"Found cycle {cycle}")
 			cycles.append(cycle)
 		else:
-			# print("Could not find any more cycles!")
+			print("Could not find any more cycles!")
 			break
 	print(f"[INFO] Found {len(cycles)} cycles after {time.time() - start_time} s.")
 
