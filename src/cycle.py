@@ -117,10 +117,12 @@ and ensures that all of the nullvectors are also of type int.
 	# return null_space(R) # Todo: turn into list of columns
 
 def get_cycles(crn: Crn, transitions: list, num: int = 5) -> list:
-	matrix = np.column_stack([t.vec_as_mat for t in transitions])
+	matrix = np.column_stack([t.vec_as_mat for _idx, t in transitions])
+	tran_to_idx = [ idx for idx, _ in transitions ]
+	print(matrix)
 	vecs = get_cycle_vectors(matrix, num)
 	print(f"Cycle vectors: {vecs}")
-	return cycles_from_cycle_vectors(vecs, crn)
+	return cycles_from_cycle_vectors(vecs, crn, tran_to_idx)
 
 def get_cycle_vectors(R : np.matrix, num=5):
 	'''
@@ -135,7 +137,7 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 	# utilize PuLP's ILP engine to get potential cycle Parikh vectors
 	problem = LpProblem("Cycle_Detection_Problem", sense=LpMinimize)
 
-	# Create variables for integer null vectors with bounds 0-1
+	# Create variables for integer null vectors with bounds 0-2
 	n = R.shape[1] # Number of columns
 	x = [LpVariable(f'x{i}', lowBound=0, upBound=2, cat='Integer') for i in range(n)]
 
@@ -146,8 +148,9 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 		for row in R.tolist():
 			problem += lpSum(row[j] * x[j] for j in range(n)) == 0
 
-		# Minimize L1 norm (smaller cycles)
-		# problem += lpSum(x)
+		# Minimize L1 norm (smaller cycles) -- only on the first iteration
+		#if len(cycles) == 0:
+		problem += lpSum(x)
 
 		# Add a constraint to ensure x is not the zero vector
 		problem += lpSum(x) >= 1  # At least one component must be greater than zero
@@ -155,8 +158,7 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 		# Exclude previously found solutions
 		for cycle in cycles:
 			# Add constraints to ensure not equal to any previously found vector
-			problem += lpSum([x[i] - cycle[i] for i in range(n)]) != 1  # At least one component is different
-			problem += lpSum([cycle[i] - x[i] for i in range(n)]) != 1  # Ensure no matching components
+			problem += lpSum([x[i] - cycle[i] for i in range(n)]) >= 1 or lpSum([cycle[i] - x[i] for i in range(n)]) >= 1  # At least one component is different
 
 		# Solve the problem
 		problem.solve()
@@ -186,19 +188,32 @@ indexes in the crn's `transitions` member list
 	sortable_transitions.sort(reverse=True)
 	return [st.index for st in sortable_transitions]
 
-def cycles_from_cycle_vectors(vecs : list, crn : Crn) -> list:
+def expand_vec(vec: np.matrix, tran_to_idx: list, num_transitions: int) -> np.matrix:
+	'''
+When we generate cycle Parikh vectors, we only provide the transitions we want included in the cycle.
+As a result, we have to convert this into a parikh vector that is actually useful to the CRN (i.e.,
+has slots for all transitions in the S-VAS, not just for the ones we want included in the VAS.
+	'''
+	veclist = [0 for _ in range(num_transitions)]
+	for old_idx, new_idx in enumerate(tran_to_idx):
+		veclist[new_idx] = vec[old_idx]
+	return np.matrix(veclist).T
+
+def cycles_from_cycle_vectors(vecs : list, crn : Crn, tran_to_idx: list) -> list:
 	'''
 Creates cycles from cycle vectors
 	'''
 	cycles = []
 	sorted_transitions = get_ordered_reactions(crn)
 	print(sorted_transitions)
+	n = len(crn.transitions)
+	print(f"Parikh vector dimension: {n}")
 	for v in vecs:
 		print(v)
 		# Rather than combinatorially expand to all possible
 		# just get those with the most probable transitions
 		# first, since they are most likely to be probable
-		v_counter = v.copy()
+		v_counter = expand_vec(v, tran_to_idx, n)
 		transitions = []
 		while not np.all(v_counter == 0):
 			for idx in sorted_transitions:
