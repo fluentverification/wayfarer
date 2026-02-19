@@ -1,6 +1,9 @@
 import numpy as np
 from scipy.linalg import null_space
 
+from pulp import LpProblem, LpMinimize, LpVariable, lpSum, LpInteger, LpStatus, LpStatusOptimal, value, LpSolutionInfeasible, LpSolutionUnbounded, LpSolutionNoSolutionFound
+import time
+
 from crn import *
 # from sbspc import Subspace
 
@@ -97,16 +100,26 @@ This does not work if the data type of the matrix is `float`
 		scale_factor *= prime ** exponent
 	return scale_factor
 
-def get_nullvectors(R : np.matrix) -> list:
+def get_nullvectors(R : np.matrix, atol=1e-13, rtol=0) -> list:
 	'''
 Gets the nullvectors of matrix R (where R has all positive integers)
 and ensures that all of the nullvectors are also of type int.
 	'''
-	return null_space(R) # Todo: turn into list of columns
+	A = np.atleast_2d(R)
+	u, s, vh = np.linalg.svd(A)
+	# v = vh.T # This is all real valued so the hermetian is just the transpose
+	rank = np.linalg.matrix_rank(A)
+	# We can get the columns of v by using vh.tolist() which provides the rows of vh (i.e., the columns of v) in a list
+	vcols = vh.tolist()
+	# The last n - r columns of v are the nullspace basis
+	ns = vcols[rank::]
+	return ns
+	# return null_space(R) # Todo: turn into list of columns
 
 def get_cycles(crn: Crn, transitions: list, num: int = 5) -> list:
 	matrix = np.column_stack([t.vec_as_mat for t in transitions])
 	vecs = get_cycle_vectors(matrix, num)
+	print(f"Cycle vectors: {vecs}")
 	return cycles_from_cycle_vectors(vecs, crn)
 
 def get_cycle_vectors(R : np.matrix, num=5):
@@ -114,23 +127,51 @@ def get_cycle_vectors(R : np.matrix, num=5):
 Any positive integer linear combination of the nullvectors of R are the cycles
 of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 	'''
-	nv = get_nullvectors(R)
-	cycles = [v for v in nv]
-	n = len(nv)
-	# Add linear combinations
 	# TODO: add support for combinations beyond that
 	print("[WARNING] Wayfarer only supports \"first level\" cycle detection currently. This means only linear combinations of null vectors with coefficients equal to 1 or 0")
-	# m_fac = 1
-	# We already have each individual null vector in `cycles`
-	for i in range(2, n):
-		for j in range(0, i):
-			# TODO: I think this works
-			if len(cycles) >= num:
-				return cycles
-			vsum = sum([v for v in nv[j::i]])
-			cycles.append(vsum)
-	# while len(cycles) < num:
-	# 	pass
+	cycles = []
+	start_time = time.time()
+	# utilize PuLP's ILP engine to get potential cycle Parikh vectors
+	problem = LpProblem("Cycle_Detection_Problem", sense=LpMinimize)
+
+	# Create variables for integer null vectors with bounds 0-1
+	n = R.shape[1] # Number of columns
+	x = [LpVariable(f'x{i}', lowBound=0, upBound=1, cat='Integer') for i in range(n)]
+
+	while len(cycles) < num:
+		# clear previous problem
+		problem += lpSum(0)
+		# Create constraints for null vector
+		for row in R.tolist():
+			problem += lpSum(row[j] * x[j] for j in range(n)) == 0
+
+		# Minimize L1 norm (smaller cycles)
+		problem += lpSum(x)
+
+		# Add a constraint to ensure x is not the zero vector
+		problem += lpSum(x) >= 1  # At least one component must be greater than zero
+
+		# Exclude previously found solutions
+		for cycle in cycles:
+			# Add constraints to ensure not equal to any previously found vector
+			problem += lpSum([x[i] - cycle[i] for i in range(n)]) >= 1  # At least one component is different
+			problem += lpSum([cycle[i] - x[i] for i in range(n)]) >= 1  # Ensure no matching components
+
+		# Solve the problem
+		problem.solve()
+
+		# Check results
+		print(type(LpStatus[problem.status]))
+		print(LpStatus)
+		if problem.status == LpOptimal:
+			cycle = [value(var) for var in x]
+			# print(f"Found cycle {cycle}")
+			cycles.append(cycle)
+		else:
+			# print("Could not find any more cycles!")
+			break
+	print(f"[INFO] Found {len(cycles)} cycles after {time.time() - start_time} s.")
+
 	return cycles
 
 def get_ordered_reactions(crn : Crn) -> list:
@@ -151,7 +192,9 @@ Creates cycles from cycle vectors
 	'''
 	cycles = []
 	sorted_transitions = get_ordered_reactions(crn)
+	print(sorted_transitions)
 	for v in vecs:
+		print(v)
 		# Rather than combinatorially expand to all possible
 		# just get those with the most probable transitions
 		# first, since they are most likely to be probable
