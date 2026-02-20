@@ -135,6 +135,7 @@ class State:
 			State.commutable_transitions = get_commutable_transitions(crn, State.subspaces[0], State.subspaces[len(State.subspaces) - 1])
 			# Populate cycles
 			ctrans = [(idx, transition) for idx, transition in enumerate(crn.transitions) if is_cyclable(transition, State.subspaces[0])]
+			# print([transition.vec_as_mat.T for _, transition in ctrans])
 			cycles = get_cycles(crn, ctrans)
 
 		else:

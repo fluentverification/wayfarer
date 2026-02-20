@@ -1,8 +1,11 @@
 import numpy as np
 from scipy.linalg import null_space
 
+import pulp
 from pulp import LpProblem, LpMinimize, LpVariable, lpSum, LpInteger, LpStatus, LpStatusOptimal, value, LpSolutionInfeasible, LpSolutionUnbounded, LpSolutionNoSolutionFound
+
 import time
+from copy import deepcopy
 
 from crn import *
 # from sbspc import Subspace
@@ -11,11 +14,12 @@ from crn import *
 from fractions import Fraction
 
 class Cycle:
-	def __init__(self, ordered_reactions : list):
+	def __init__(self, ordered_reactions : list, crn: Crn):
 		'''
 	Creates an object
 		'''
-		self.__ordered_reactions = ordered_reactions
+		self.__crn = crn
+		self.__ordered_reactions = ordered_reactions.copy()
 		self.__check_cycle_valid()
 		self.__in_s0 = [r.in_s0 for r in ordered_reactions]
 		if not np.any(self.__in_s0):
@@ -26,7 +30,7 @@ class Cycle:
 		sum = self.__ordered_reactions[0].vec_as_mat
 		for r in self.__ordered_reactions[1::]:
 			sum += r.vec_as_mat
-		assert(np.all(np.is_close(sum, 0)))
+		assert(np.all(np.isclose(sum, 0)))
 
 	def apply_cycle(self, state : np.matrix) -> list | None:
 		s = state
@@ -44,7 +48,8 @@ def get_commutable_transitions(crn : Crn, s0, ss) -> list:
 		# TODO: need offset?
 		if np.all(np.isclose(s0.P * t.vec_as_mat, 0)).all() and np.all(np.isclose(ss.P * t.vec_as_mat, t.vec_as_mat)):
 			transitions.append(t)
-	return t
+	print(f"[INFO] Got {len(transitions)} trivially commutable transitions: {','.join([t.name for t in transitions])}")
+	return transitions
 
 primes = [2]
 
@@ -117,11 +122,9 @@ and ensures that all of the nullvectors are also of type int.
 	# return null_space(R) # Todo: turn into list of columns
 
 def get_cycles(crn: Crn, transitions: list, num: int = 5) -> list:
-	matrix = np.column_stack([t.vec_as_mat for _idx, t in transitions])
+	matrix = np.column_stack([t.vec_as_mat.copy() for _idx, t in transitions])
 	tran_to_idx = [ idx for idx, _ in transitions ]
-	print(matrix)
 	vecs = get_cycle_vectors(matrix, num)
-	print(f"Cycle vectors: {vecs}")
 	return cycles_from_cycle_vectors(vecs, crn, tran_to_idx)
 
 def get_cycle_vectors(R : np.matrix, num=5):
@@ -129,13 +132,13 @@ def get_cycle_vectors(R : np.matrix, num=5):
 Any positive integer linear combination of the nullvectors of R are the cycles
 of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 	'''
-	print(R)
 	# TODO: add support for combinations beyond that
 	print("[WARNING] Wayfarer only supports \"first level\" cycle detection currently. This means only linear combinations of null vectors with coefficients equal to 1 or 0")
 	cycles = []
 	start_time = time.time()
 	# utilize PuLP's ILP engine to get potential cycle Parikh vectors
 	problem = LpProblem("Cycle_Detection_Problem", sense=LpMinimize)
+	solver = pulp.PULP_CBC_CMD(msg=False)
 
 	# Create variables for integer null vectors with bounds 0-2
 	n = R.shape[1] # Number of columns
@@ -161,16 +164,13 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 			problem += lpSum([x[i] - cycle[i] for i in range(n)]) >= 1 or lpSum([cycle[i] - x[i] for i in range(n)]) >= 1  # At least one component is different
 
 		# Solve the problem
-		problem.solve()
+		problem.solve(solver)
 
 		# Check results
-		print(LpStatus[problem.status])
 		if problem.status == LpStatusOptimal:
 			cycle = [value(var) for var in x]
-			# print(f"Found cycle {cycle}")
 			cycles.append(cycle)
 		else:
-			print("Could not find any more cycles!")
 			break
 	print(f"[INFO] Found {len(cycles)} cycles after {time.time() - start_time} s.")
 
@@ -197,7 +197,7 @@ has slots for all transitions in the S-VAS, not just for the ones we want includ
 	veclist = [0 for _ in range(num_transitions)]
 	for old_idx, new_idx in enumerate(tran_to_idx):
 		veclist[new_idx] = vec[old_idx]
-	return np.matrix(veclist).T
+	return veclist
 
 def cycles_from_cycle_vectors(vecs : list, crn : Crn, tran_to_idx: list) -> list:
 	'''
@@ -205,23 +205,25 @@ Creates cycles from cycle vectors
 	'''
 	cycles = []
 	sorted_transitions = get_ordered_reactions(crn)
-	print(sorted_transitions)
 	n = len(crn.transitions)
-	print(f"Parikh vector dimension: {n}")
+	# print(f"Parikh vector dimension: {n}")
 	for v in vecs:
-		print(v)
 		# Rather than combinatorially expand to all possible
 		# just get those with the most probable transitions
 		# first, since they are most likely to be probable
 		v_counter = expand_vec(v, tran_to_idx, n)
 		transitions = []
-		while not np.all(v_counter == 0):
+		while not np.all([vi == 0 for vi in v_counter]):
 			for idx in sorted_transitions:
-				transitions.append(crn.transitions[idx])
-				v_counter[idx] -= 1
-		cycles.append(Cycle(transitions, crn))
+				if v_counter[idx] > 0:
+					transitions.append(deepcopy(crn.transitions[idx]))
+					v_counter[idx] -= 1
+		try:
+			cycles.append(Cycle(transitions, crn))
+		except Exception:
+			pass
 
-	print(f"Found cycles: {cycles}")
+	print(f"[INFO] Found {len(cycles)} usable cycles.")
 
 	return cycles
 
