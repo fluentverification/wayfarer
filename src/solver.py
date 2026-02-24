@@ -12,10 +12,11 @@ from stormpy import SparseMatrixBuilder, StateLabeling, SparseModelComponents
 import stormpy
 
 class SolverSettings:
-	DESIRED_NUMBER_STATES=2
-	ABSORBING_INDEX=0
-	PRINT_FREQUENCY=100000
-	COMPUTE_UPPER_BOUND=False
+	DESIRED_NUMBER_STATES = 2
+	ABSORBING_INDEX = 0
+	PRINT_FREQUENCY = 100000
+	COMPUTE_UPPER_BOUND = False
+
 
 all_states = []
 state_ids = {}
@@ -47,6 +48,7 @@ class RandomAccessSparseMatrixBuilder:
 	'''
 	A wrapper class for random entry into storm's sparse matrix builder
 	'''
+
 	def __init__(self):
 		# Self loop for the absorbing state
 		self.from_list = [[Entry(0, 1.0)]]
@@ -56,6 +58,14 @@ class RandomAccessSparseMatrixBuilder:
 		while len(self.from_list) <= row:
 			self.from_list.append([])
 		self.from_list[row].append(Entry(col, val))
+
+	def has_entry(self, row: int, col: int) -> bool:
+		if len(self.from_list) <= row:
+			return False
+		for entry in self.from_list[row]:
+			if entry.col == col:
+				return True
+		return False
 
 	def to_smb(self):
 		'''
@@ -70,7 +80,7 @@ class RandomAccessSparseMatrixBuilder:
 				col = entry.col
 				val = entry.val
 				if row == col:
-					assert(len(self.from_list[row]) == 1)
+					assert (len(self.from_list[row]) == 1)
 					matrix_builder.add_next_value(row, col, 1.0)
 					break
 				matrix_builder.add_next_value(row, col, val)
@@ -97,13 +107,14 @@ class RandomAccessSparseMatrixBuilder:
 			# print(f"{i}: {self.exit_rates[i]}, {[str(entry) for entry in self.from_list[i]]}")
 			if len(self.from_list[i]) == 0:
 				self.exit_rates[i] = None
-				assert(self.exit_rates[i] is None)
+				assert (self.exit_rates[i] is None)
 				continue
 			max_entry = max(self.from_list[i])
 			max_rate = max_entry.val
 			if self.exit_rates[i] is not None and not self.exit_rates[i] >= max_rate:
 				print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
-			assert(self.exit_rates[i] is None or (self.exit_rates[i] >= max_rate or math.isclose(max_rate, self.exit_rates[i])))
+			assert (self.exit_rates[i] is None or (self.exit_rates[i] >=
+			        max_rate or math.isclose(max_rate, self.exit_rates[i])))
 
 def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False, single_order=False, cnc=False):
 	global all_states
@@ -154,7 +165,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 		successors, total_expanded_rate = curr_state_data.successors(all_successors=expand_all_states)
 		total_full_rate = curr_state_data.get_total_outgoing_rate()
 		# print(total_full_rate, total_expanded_rate)
-		assert(total_full_rate + 1e-5 >= total_expanded_rate)
+		assert (total_full_rate + 1e-5 >= total_expanded_rate)
 		if len(successors) == 0:
 			print("No successors")
 			# Introduce a self-loop
@@ -172,7 +183,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			if next_state_tuple not in state_ids:
 				next_index = len(all_states)
 				all_states.append(s)
-				assert(last_index == next_index)
+				assert (last_index == next_index)
 				# Assign new index
 				state_ids[next_state_tuple] = last_index
 				s.idx = last_index
@@ -186,17 +197,106 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 				s_old = s
 				s = all_states[state_ids[next_state_tuple]]
 				s.reach += s_old.reach
-			assert(s.idx is not None)
+			assert (s.idx is not None)
 			# Place the transition in the matrix
 			matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
 	if print_when_done:
-		print(f"Explored {len(matrixBuilder.from_list)} states (expanded {num_explored}). Found {num_satstates} satisfying states.")
+		print(f"Explored {len(matrixBuilder.from_list)} states (expanded {
+		      num_explored}). Found {num_satstates} satisfying states.")
 	if num_satstates == 0:
 		print(f"Could not find any satisfying states!")
 		return
+	# apply_cycles(matrixBuilder, sat_states, deadlock_idxs, crn, next_index)
 	sanity_check()
 	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs, time_bound, crn)
 
+def apply_cycles(matrixBuilder, satisfying_state_idxs, deadlock_idxs, crn, next_available_idx):
+	if len(State.orthocycles) == 0:
+		return
+	print("Applying cycles")
+	global all_states
+	global state_ids
+	new_cycle_states = []
+	# First we will apply all of the cycles, creating internal connections, and then create connections
+	# between states that have been newly created if there is a one-step transition between them.
+	for state in all_states[1::]:
+		# We need to iterate over the states first, then the cycles.
+		for cycle in State.orthocycles:
+			# We can apply the cycle forward and backward. We apply forward first.
+			cur_state = state
+			cur_state_idx = state.idx
+			for transition in cycle.ordered_reactions:
+				# We have a SortableTransition not a Transition
+				t = transition.transition
+				if not t.enabled(cur_state.vecm):
+					break
+				# Get the next state and see if it's new or not
+				next_state_vec = cur_state.vec + transition.vec
+				rate = transition.rate_finder(cur_state.vecm)
+				nsvt = tuple(next_state_vec)
+				if nsvt in state_ids:
+					# State is not new, just add it to the matrix builder
+					next_idx = state_ids[nsvt]
+					if matrixBuilder.has_entry(cur_state_idx, next_idx):
+						# No need to add the entry since it already exists
+						continue
+					matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
+					cur_state = all_states[next_idx]
+					cur_state_idx = next_idx
+				else:
+					# State is new, so we have to add it.
+					matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
+					next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
+					next_available_idx += 1
+					all_states.append(next_state)
+					new_cycle_states.append(next_state)
+					cur_state.total_cycle_exit += rate
+			cur_state = state
+			cur_state_idx = state.idx
+			for transition in cycle.ordered_reactions[::-1]:
+				# We have a SortableTransition not a Transition
+				t = transition.transition
+				if not t.enabled(cur_state.vecm):
+					break
+				# Get the next state and see if it's new or not
+				next_state_vec = cur_state.vec + transition.vec
+				rate = transition.rate_finder(cur_state.vecm)
+				nsvt = tuple(next_state_vec)
+				if nsvt in state_ids:
+					# State is not new, just add it to the matrix builder
+					next_idx = state_ids[nsvt]
+					if matrixBuilder.has_entry(cur_state_idx, next_idx):
+						# No need to add the entry since it already exists
+						continue
+					matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
+					cur_state = all_states[next_idx]
+					cur_state_idx = next_idx
+				else:
+					# State is new, so we have to add it.
+					matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
+					next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
+					next_available_idx += 1
+					all_states.append(next_state)
+					new_cycle_states.append(next_state)
+					cur_state.total_cycle_exit += rate
+	# Next, we need to expand successors for all of these newly created state
+	for state in new_cycle_states:
+		successors, total_expanded_rate = state.successors(all_successors=True)
+		for s, rate in successors:
+			next_state_vec = s.vec
+			ns = tuple(next_state_vec)
+			if ns not in state_ids:
+				# We should not create this state or give it an ID. However, we have to handle the rate going to it.
+				# The rate going to that state should go to the absorbing state, however, it is included in total_expanded_rate
+				# in finalize_and_check(). So, we have to account for it. The way we do that is kind of "hackey": we SUBTRACT the
+				# rate from state.total_cycle_exit
+				state.total_cycle_exit -= rate
+				continue
+			else:
+				next_state_id = state_ids[ns]
+
+				# We have to account for the rate we have taken away from
+				# TODO: Gotta figure out what to do. Should we just leave the states floating and have them be taken care of by finalize_and_check()
 
 # This can become a lemma when we eventually use Nagini to verify this
 def sanity_check():
@@ -205,7 +305,7 @@ def sanity_check():
 	# Check our indecies
 	idx = 0
 	for state in all_states:
-		assert(state is None or state.idx == idx)
+		assert (state is None or state.idx == idx)
 		idx += 1
 	print("done.")
 
@@ -230,18 +330,18 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 				continue
 			else:
 				if len(State.commutable_transitions) > 0:
-					pass # TODO
+					pass  # TODO
 				if len(State.orthocycles) > 0:
-					pass # TODO
+					pass  # TODO
 				if len(State.non_orthocycles) > 0:
-					pass # TODO
+					pass  # TODO
 			# Expand the state and create transitions ONLY TO EXISTING STATES
 			successors, total_exit_rate = state.successors(True)
 			total_full_rate = state.get_total_outgoing_rate()
 			# states not expanded will go to the absorbing state
-			rate_to_abs = total_full_rate - total_exit_rate
+			rate_to_abs = total_full_rate - total_exit_rate - state.total_cycle_exit
 			for s, rate in successors:
-				stup = s #tuple(s.vec)
+				stup = s  # tuple(s.vec)
 				if stup in state_ids:
 					next_idx = state_ids[stup]
 					matrixBuilder.add_next_value(state.idx, next_idx, rate)
@@ -251,7 +351,8 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 				matrixBuilder.add_next_value(state.idx, 0, rate_to_abs)
 			matrixBuilder.add_exit_rate(state.idx, total_full_rate)
 	if num_perim_satstates > 0:
-		print(f"We found an additional {num_perim_satstates} satisfying states in the perimeter state indecies!")
+		print(f"We found an additional {
+		      num_perim_satstates} satisfying states in the perimeter state indecies!")
 	matrix = matrixBuilder.build()
 	matrixBuilder.assert_all_entries_correct()
 	labeling = StateLabeling(matrixBuilder.size())
@@ -277,12 +378,12 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	print(model)
 	print(f"Matrix built (size {matrixBuilder.size()})")
 	print(f"Checking model with formula `{chk_property}`")
-	prop = stormpy.parse_properties(chk_property)[0] # stormpy.Property("Lower Bound", )
+	prop = stormpy.parse_properties(chk_property)[0]  # stormpy.Property("Lower Bound", )
 	env = stormpy.Environment()
 	env.solver_environment.native_solver_environment.precision = stormpy.Rational(1e-100)
 	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
 	print(f"Pmin = {result.at(1)}")
-	assert(result.min + 1e-6 >= 0.0 and result.max <= 1.0 + 1e-6)
+	assert (result.min + 1e-6 >= 0.0 and result.max <= 1.0 + 1e-6)
 	if SolverSettings.COMPUTE_UPPER_BOUND:
 		# Upper bound propert
 		chk_property_upper = f"P=? [ true U{prop_bound} \"satisfy\" | \"absorbing\" ]"

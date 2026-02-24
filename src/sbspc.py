@@ -1,20 +1,20 @@
-USE_CUDA=False
-VERIFY=True
+from cycle import *
+from util import to_frac_matrix
+from crn import *
+from distance import vass_distance
+from fractions import Fraction
+import numpy as np
+USE_CUDA = False
+VERIFY = True
 
 # if not USE_CUDA:
-import numpy as np
 # else:
-	# import cupy as np
+# import cupy as np
 
 # if VERIFY:
 # from nagini_contracts.contracts import *
 # from typing import List
-from fractions import Fraction
 
-from distance import vass_distance
-from crn import *
-from util import to_frac_matrix
-from cycle import *
 
 # from stormpy import Rational
 
@@ -27,14 +27,15 @@ class Subspace:
 	# Then, piped_inv is the inverse of that Piped matrix, computed only once
 	# for brevity and optimization.
 	piped = None	 # Stored for completeness
-	piped_inv = None # Assumes that piped ** -1 = piped_inv
+	piped_inv = None  # Assumes that piped ** -1 = piped_inv
+
 	def initialize_piped(piped_matrix : np.matrix) -> None:
 		Subspace.piped = piped_matrix
 		to_frac_matrix(Subspace.piped)
 		Subspace.piped_inv = np.linalg.pinv(piped_matrix)
 
 	# @Pure
-	def norm(vec): # -> float:
+	def norm(vec):  # -> float:
 		'''
 		Has two behaviors:
 
@@ -51,9 +52,9 @@ class Subspace:
 			return Fraction(np.linalg.norm(Subspace.piped_inv * vec, ord=1)).limit_denominator(300)
 		return Fraction(np.linalg.norm(np.multiply(vec, Subspace.mask), ord=1)).limit_denominator(300)
 
-
 	# Type of elements in transitions: crn.Transition
-	def __init__(self, transitions, excluded_transitions, last_layer = None):
+
+	def __init__(self, transitions, excluded_transitions, last_layer=None):
 		'''
 		Creates a subspace with a projection matrix and all that fun stuff
 		transitions : the transitions forming the basis of the subspace
@@ -69,7 +70,8 @@ class Subspace:
 		basis_vectors = [np.matrix(t.vector).T for t in transitions]
 		# print(basis_vectors[0])
 		# TODO: make sure we're appending to the right axis
-		A = np.column_stack(basis_vectors) # np.matrix(basis_vectors[0].append(basis_vectors[1:], axis=1))
+		# np.matrix(basis_vectors[0].append(basis_vectors[1:], axis=1))
+		A = np.column_stack(basis_vectors)
 		to_frac_matrix(A)
 		self.M = A
 		# print(A)
@@ -94,7 +96,7 @@ class Subspace:
 			return self.transitions
 
 	# @Pure
-	def contains(self, other, test_vec): # -> bool:
+	def contains(self, other, test_vec):  # -> bool:
 		# Check if contains
 		# Requires(len(test_vec) == len(Subspace.mask))
 		# Ensures(Implies(Result(), self.dist(test_vec) >= other.dist(test_vec)))
@@ -103,11 +105,10 @@ class Subspace:
 		return np.linalg.matrix_rank(np.block([self.P, other.P])) == self.rank
 
 	# @Pure
-	def dist(self, vec): # -> float:
+	def dist(self, vec):  # -> float:
 		# Requires(len(vec) == len(Subspace.mask))
 		# Ensures(Result() >= 0.0)
 		return Subspace.norm(self.P * vec - vec)
-
 
 	def __str__(self):
 		return f"Subspace with basis reactions {[str(t) for t in self.transitions]}"
@@ -128,13 +129,17 @@ class State:
 	non_orthocycles		: list = []
 	commutable_transitions : list = []
 	# @staticmethod
+
 	def initialize_static_vars(crn, dep, single_order=False, cnc=False):
 		if not single_order:
 			State.subspaces = dep.create_subspaces(crn)
 			# Commutable transitions
-			State.commutable_transitions = get_commutable_transitions(crn, State.subspaces[0], State.subspaces[len(State.subspaces) - 1])
+			print(State.subspaces[0].P)
+			State.commutable_transitions = get_commutable_transitions(
+				crn, State.subspaces[0], State.subspaces[len(State.subspaces) - 1])
 			# Populate cycles
-			ctrans = [(idx, transition) for idx, transition in enumerate(crn.transitions) if is_cyclable(transition, State.subspaces[0])]
+			ctrans = [(idx, transition) for idx, transition in enumerate(
+				crn.transitions) if is_cyclable(transition, State.subspaces[0])]
 			# print([transition.vec_as_mat.T for _, transition in ctrans])
 			cycles = get_cycles(crn, ctrans)
 
@@ -152,15 +157,16 @@ class State:
 			State.total_offset = State.init
 		# There is only one subspace so no projection is necessary
 		elif len(State.subspaces) == 1:
-			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1])
+			State.total_offset = State.init + \
+				dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1])
 		# Result vector must be projected on s0.P
 		else:
-			State.total_offset = State.init + dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
+			State.total_offset = State.init + \
+				dep.create_offset_vector(State.subspaces[len(State.subspaces) - 1], State.subspaces[0])
 		to_frac_matrix(State.total_offset)
 		print(f"{dep}")
 
-
-	def __init__(self, vec, idx=None, reach=1.0):
+	def __init__(self, vec, idx=None, reach=1.0, need_compute_order=True):
 		'''
 		Constructor for a new State element. Members within the State class:
 		1. vec (type: np.matrix) : the actual vector representing the state values
@@ -178,9 +184,13 @@ class State:
 		self.vec = vec
 		self.vecm = np.matrix(vec).T
 		to_frac_matrix(self.vecm)
-		self.adj = self.vecm - State.total_offset # State.init
+		self.adj = self.vecm - State.total_offset  # State.init
 		self.order : int = 0
-		self.__compute_order()
+		# The total exit rate from applying cycle and commute.
+		self.total_cycle_exit : float = 0.0
+		# TODO: for some of these we don't need to compute an order
+		if need_compute_order:
+			self.__compute_order()
 		self.perimeter = True
 		self.idx = idx
 		self.sbsp = State.subspaces[0] if len(State.subspaces) > 0 else None
@@ -204,10 +214,10 @@ class State:
 			# print(s.rank, end=",")
 			ep = s.dist(self.adj)
 			# For some reason the floating point thing has some issues
-			#if ep == 0:
-			#if ep > 1e-14 and ep < 1e-12:
-			#	print(f"Gotcha! {ep} on state {self.vec} for {s}")
-			if ep < 1e-8: # To account for floating point error
+			# if ep == 0:
+			# if ep > 1e-14 and ep < 1e-12:
+			# print(f"Gotcha! {ep} on state {self.vec} for {s}")
+			if ep < 1e-8:  # To account for floating point error
 				self.sbsp = s
 				# print()
 				return
@@ -228,13 +238,13 @@ class State:
 		for t in transitions:
 			if t.enabled(vec):
 				rate = t.rate_finder(vec)
-				assert(rate >= 0)
+				assert (rate >= 0)
 				if rate == 0.0:
 					continue
 				total_rate += rate
 		return total_rate
 
-	def successors(self, only_tuples : bool = False, all_successors : bool = False): # -> tuple:
+	def successors(self, only_tuples : bool = False, all_successors : bool = False):  # -> tuple:
 		'''
 		Only returns the successors using the vectors in the dependency graph
 		that get us closer to the target.
@@ -252,19 +262,19 @@ class State:
 			update_vectors = State.crn.transitions
 		else:
 			# TODO: why is this IndexError'ing on some models?
-			subspace = self.sbsp # State.subspaces[max(0, len(State.subspaces) - (self.order + 2))]
+			subspace = self.sbsp  # State.subspaces[max(0, len(State.subspaces) - (self.order + 2))]
 			# print(max(0, len(State.subspaces) - (self.order + 2)))
 			if all_successors:
 				# If the CRN variable is passed into get_update_vectors, all successors are returned
-				update_vectors = State.crn.transitions # subspace.get_update_vectors(State.crn)
+				update_vectors = State.crn.transitions  # subspace.get_update_vectors(State.crn)
 			else:
-				update_vectors = subspace.get_update_vectors() # State.crn)
+				update_vectors = subspace.get_update_vectors()  # State.crn)
 		# print(f"Update vectors {[str(vec.name) for vec in update_vectors]}")
 		for t in update_vectors:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)
-				assert(rate >= 0.0)
+				assert (rate >= 0.0)
 				# if we get a zero rate we can ignore things
 				if rate == 0.0:
 					continue
@@ -311,20 +321,14 @@ class State:
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
 		# return self.epsilon[len(self.epsilon) - 1] > other.epsilon[len(other.epsilon) - 1]
-		return self.order > other.order or \
-				(self.order == other.order and self.epsilon[0] > other.epsilon[0]) or \
-				(self.order == other.order and self.epsilon[0] == other.epsilon[0] and \
-				self.reach < other.reach)
+		return self.order > other.order or (self.order == other.order and self.epsilon[0] > other.epsilon[0]) or (self.order == other.order and self.epsilon[0] == other.epsilon[0] and self.reach < other.reach)
 
 	# @Pure
 	def __lt__(self, other):
 		# Requires(len(self.epsilon) == len(other.epsilon))
 		# Requires(len(self.epsilon) > 0)
 		# return self.epsilon[len(self.epsilon) - 1] < other.epsilon[len(other.epsilon) - 1]
-		return self.order < other.order or \
-				(self.order == other.order and self.epsilon[0] < other.epsilon[0]) or \
-				(self.order == other.order and self.epsilon[0] == other.epsilon[0] and \
-				self.reach > other.reach)
+		return self.order < other.order or (self.order == other.order and self.epsilon[0] < other.epsilon[0]) or (self.order == other.order and self.epsilon[0] == other.epsilon[0] and self.reach > other.reach)
 
 	# @Pure
 	def __le__(self, other):
@@ -355,4 +359,3 @@ class State:
 	def strong_equal(self, other):
 		# Requires(len(self.vec) == len(other.vec))
 		return self.vec == other.vec
-

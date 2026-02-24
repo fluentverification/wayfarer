@@ -16,40 +16,56 @@ from fractions import Fraction
 class Cycle:
 	def __init__(self, ordered_reactions : list, crn: Crn):
 		'''
-	Creates an object
+	Creates an object which represents a cycle in the abstract.
 		'''
 		self.__crn = crn
-		self.__ordered_reactions = ordered_reactions.copy()
+		self.ordered_reactions = ordered_reactions.copy()
 		self.__check_cycle_valid()
 		self.__in_s0 = [r.in_s0 for r in ordered_reactions]
-		if not np.any(self.__in_s0):
-			raise Exception("Cycle must leave S0 (else it may be useless)!")
+		# if not np.any(self.__in_s0):
+		# 	raise Exception("Cycle must leave S0 (else it may be useless)!")
 		self.is_orthocycle = np.all(self.__in_s0)
 
-	def __check_cycle_valid(self) -> bool:
-		sum = self.__ordered_reactions[0].vec_as_mat
-		for r in self.__ordered_reactions[1::]:
+	def __check_cycle_valid(self):
+		sum = self.ordered_reactions[0].vec_as_mat
+		for r in self.ordered_reactions[1::]:
 			sum += r.vec_as_mat
-		assert(np.all(np.isclose(sum, 0)))
+		assert (np.all(np.isclose(sum, 0)))
 
 	def apply_cycle(self, state : np.matrix) -> list | None:
+		'''
+	TODO: I would like to apply cycles to every state individually, and then go through the list of
+	newly created states and then after all of that is done add edges only to states which exist/have
+	been created in the model.
+		'''
 		s = state
 		new_states = []
-		for r in self.__ordered_reactions:
+		for r in self.ordered_reactions:
 			s += r.vec_as_mat
 			if np.any(s < 0):
 				return None
 			new_states.append(s)
 		return new_states
 
-def get_commutable_transitions(crn : Crn, s0, ss) -> list:
+	def __str__(self):
+		return ' <-> '.join([t.name for t in self.ordered_reactions])
+
+
+def get_commutable_transitions(crn : Crn, s0, _ss) -> list:
 	transitions = []
 	for t in crn.transitions:
 		# TODO: need offset?
-		if np.all(np.isclose(s0.P * t.vec_as_mat, 0)).all() and np.all(np.isclose(ss.P * t.vec_as_mat, t.vec_as_mat)):
+		print(t.vec_as_mat.T)
+		# If the transition's update vector is orthogonal to S0, then it is very likely commutable
+		print((s0.P * t.vec_as_mat).T)
+		print(np.isclose(s0.P * t.vec_as_mat, 0).T)
+		print(np.all(np.isclose(s0.P * t.vec_as_mat, 0).T))
+		if np.all(np.isclose(s0.P * t.vec_as_mat, 0)):
 			transitions.append(t)
-	print(f"[INFO] Got {len(transitions)} trivially commutable transitions: {','.join([t.name for t in transitions])}")
+	print(f"[INFO] Got {len(transitions)} trivially commutable transitions: {
+            ','.join([t.name for t in transitions])}")
 	return transitions
+
 
 primes = [2]
 
@@ -76,7 +92,7 @@ def get_prime_factors(n : int) -> list:
 		exponent : int = 0
 		while n % p == 0:
 			exponent += 1
-			n /= p
+			n //= p
 		if exponent > 0:
 			factors.append((p, exponent))
 	return factors
@@ -122,8 +138,8 @@ and ensures that all of the nullvectors are also of type int.
 	# return null_space(R) # Todo: turn into list of columns
 
 def get_cycles(crn: Crn, transitions: list, num: int = 5) -> list:
-	matrix = np.column_stack([t.vec_as_mat.copy() for _idx, t in transitions])
-	tran_to_idx = [ idx for idx, _ in transitions ]
+	matrix = np.column_stack([t.vec_as_mat.copy() for _, t in transitions])
+	tran_to_idx = [idx for idx, _ in transitions]
 	vecs = get_cycle_vectors(matrix, num)
 	return cycles_from_cycle_vectors(vecs, crn, tran_to_idx)
 
@@ -141,7 +157,7 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 	solver = pulp.PULP_CBC_CMD(msg=False)
 
 	# Create variables for integer null vectors with bounds 0-2
-	n = R.shape[1] # Number of columns
+	n = R.shape[1]  # Number of columns
 	x = [LpVariable(f'x{i}', lowBound=0, upBound=2, cat='Integer') for i in range(n)]
 
 	while len(cycles) < num:
@@ -152,7 +168,7 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 			problem += lpSum(row[j] * x[j] for j in range(n)) == 0
 
 		# Minimize L1 norm (smaller cycles) -- only on the first iteration
-		#if len(cycles) == 0:
+		# if len(cycles) == 0:
 		problem += lpSum(x)
 
 		# Add a constraint to ensure x is not the zero vector
@@ -161,7 +177,9 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 		# Exclude previously found solutions
 		for cycle in cycles:
 			# Add constraints to ensure not equal to any previously found vector
-			problem += lpSum([x[i] - cycle[i] for i in range(n)]) >= 1 or lpSum([cycle[i] - x[i] for i in range(n)]) >= 1  # At least one component is different
+			# At least one component is different
+			problem += lpSum([x[i] - cycle[i] for i in range(n)]
+			                 ) >= 1 or lpSum([cycle[i] - x[i] for i in range(n)]) >= 1
 
 		# Solve the problem
 		problem.solve(solver)
@@ -188,7 +206,7 @@ indexes in the crn's `transitions` member list
 	sortable_transitions.sort(reverse=True)
 	return [st.index for st in sortable_transitions]
 
-def expand_vec(vec: np.matrix, tran_to_idx: list, num_transitions: int) -> np.matrix:
+def expand_vec(vec: np.matrix, tran_to_idx: list, num_transitions: int) -> list:
 	'''
 When we generate cycle Parikh vectors, we only provide the transitions we want included in the cycle.
 As a result, we have to convert this into a parikh vector that is actually useful to the CRN (i.e.,
@@ -223,7 +241,9 @@ Creates cycles from cycle vectors
 		except Exception:
 			pass
 
-	print(f"[INFO] Found {len(cycles)} usable cycles.")
+	print(f"[INFO] Found {len(cycles)} usable cycles:")
+	for c in cycles:
+		print(c)
 
 	return cycles
 
