@@ -57,6 +57,8 @@ class RandomAccessSparseMatrixBuilder:
 	def add_next_value(self, row : int, col : int, val : float):
 		while len(self.from_list) <= row:
 			self.from_list.append([])
+		if row == col:
+			assert (self.from_list[row] == 0.0)
 		self.from_list[row].append(Entry(col, val))
 
 	def has_entry(self, row: int, col: int) -> bool:
@@ -206,33 +208,36 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	if num_satstates == 0:
 		print(f"Could not find any satisfying states!")
 		return
-	# apply_cycles(matrixBuilder, sat_states, deadlock_idxs, crn, next_index)
+	apply_cycles(matrixBuilder, sat_states, deadlock_idxs, crn, last_index)
 	sanity_check()
 	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs, time_bound, crn)
 
 def apply_cycles(matrixBuilder, satisfying_state_idxs, deadlock_idxs, crn, next_available_idx):
-	if len(State.orthocycles) == 0:
+	if len(State.cycles) == 0:
+		print("Cannot apply cycles! No cycles exist!")
 		return
-	print("Applying cycles")
+	print(f"Applying {len(State.cycles)} cycles...", end="")
 	global all_states
 	global state_ids
+	assert next_available_idx == len(all_states)
 	new_cycle_states = []
 	# First we will apply all of the cycles, creating internal connections, and then create connections
 	# between states that have been newly created if there is a one-step transition between them.
 	for state in all_states[1::]:
 		# We need to iterate over the states first, then the cycles.
-		for cycle in State.orthocycles:
+		for cycle in State.cycles:
 			# We can apply the cycle forward and backward. We apply forward first.
 			cur_state = state
 			cur_state_idx = state.idx
-			for transition in cycle.ordered_reactions:
-				# We have a SortableTransition not a Transition
-				t = transition.transition
+			last_state_in_graph = True
+			for t in cycle.ordered_reactions:
 				if not t.enabled(cur_state.vecm):
 					break
 				# Get the next state and see if it's new or not
-				next_state_vec = cur_state.vec + transition.vec
-				rate = transition.rate_finder(cur_state.vecm)
+				next_state_vec = cur_state.vec + t.vector
+				if np.any(next_state_vec < 0.0):
+					break
+				rate = t.rate_finder(cur_state.vec)
 				nsvt = tuple(next_state_vec)
 				if nsvt in state_ids:
 					# State is not new, just add it to the matrix builder
@@ -240,27 +245,34 @@ def apply_cycles(matrixBuilder, satisfying_state_idxs, deadlock_idxs, crn, next_
 					if matrixBuilder.has_entry(cur_state_idx, next_idx):
 						# No need to add the entry since it already exists
 						continue
+					if cur_state_idx == next_idx:
+						print(f"Warning: Wanted self-loop on index {next_idx}")
 					matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
 					cur_state = all_states[next_idx]
 					cur_state_idx = next_idx
+					last_state_in_graph = True
 				else:
-					# State is new, so we have to add it.
-					matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
+					# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
+					# in the graph, since otherwise finalize_and_check() will take care of that
+					if last_state_in_graph:
+						matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
 					next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
 					next_available_idx += 1
+					next_state.perimeter = True
 					all_states.append(next_state)
 					new_cycle_states.append(next_state)
-					cur_state.total_cycle_exit += rate
+					last_state_in_graph = False
 			cur_state = state
 			cur_state_idx = state.idx
-			for transition in cycle.ordered_reactions[::-1]:
-				# We have a SortableTransition not a Transition
-				t = transition.transition
+			last_state_in_graph = True
+			for t in cycle.ordered_reactions[::-1]:
 				if not t.enabled(cur_state.vecm):
 					break
 				# Get the next state and see if it's new or not
-				next_state_vec = cur_state.vec + transition.vec
-				rate = transition.rate_finder(cur_state.vecm)
+				next_state_vec = cur_state.vec + t.vector
+				if np.any(next_state_vec < 0.0):
+					break
+				rate = t.rate_finder(cur_state.vec)
 				nsvt = tuple(next_state_vec)
 				if nsvt in state_ids:
 					# State is not new, just add it to the matrix builder
@@ -268,35 +280,43 @@ def apply_cycles(matrixBuilder, satisfying_state_idxs, deadlock_idxs, crn, next_
 					if matrixBuilder.has_entry(cur_state_idx, next_idx):
 						# No need to add the entry since it already exists
 						continue
+					if cur_state_idx == next_idx:
+						print(f"Warning: Wanted self-loop on index {next_idx}")
 					matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
 					cur_state = all_states[next_idx]
 					cur_state_idx = next_idx
+					last_state_in_graph = True
 				else:
-					# State is new, so we have to add it.
-					matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
+					# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
+					# in the graph, since otherwise finalize_and_check() will take care of that
+					if last_state_in_graph:
+						matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
+
 					next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
 					next_available_idx += 1
+					next_state.perimeter = True
 					all_states.append(next_state)
 					new_cycle_states.append(next_state)
-					cur_state.total_cycle_exit += rate
-	# Next, we need to expand successors for all of these newly created state
-	for state in new_cycle_states:
-		successors, total_expanded_rate = state.successors(all_successors=True)
-		for s, rate in successors:
-			next_state_vec = s.vec
-			ns = tuple(next_state_vec)
-			if ns not in state_ids:
-				# We should not create this state or give it an ID. However, we have to handle the rate going to it.
-				# The rate going to that state should go to the absorbing state, however, it is included in total_expanded_rate
-				# in finalize_and_check(). So, we have to account for it. The way we do that is kind of "hackey": we SUBTRACT the
-				# rate from state.total_cycle_exit
-				state.total_cycle_exit -= rate
-				continue
-			else:
-				next_state_id = state_ids[ns]
+					last_state_in_graph = False
+	print("...finished")
+	# # Next, we need to expand successors for all of these newly created state
+	# for state in new_cycle_states:
+	# 	successors, total_expanded_rate = state.successors(all_successors=True)
+	# 	for s, rate in successors:
+	# 		next_state_vec = s.vec
+	# 		ns = tuple(next_state_vec)
+	# 		if ns not in state_ids:
+	# 			# We should not create this state or give it an ID. However, we have to handle the rate going to it.
+	# 			# The rate going to that state should go to the absorbing state, however, it is included in total_expanded_rate
+	# 			# in finalize_and_check(). So, we have to account for it. The way we do that is kind of "hackey": we SUBTRACT the
+	# 			# rate from state.total_cycle_exit
+	# 			state.total_cycle_exit -= rate
+	# 			continue
+	# 		else:
+	# 			next_state_id = state_ids[ns]
 
-				# We have to account for the rate we have taken away from
-				# TODO: Gotta figure out what to do. Should we just leave the states floating and have them be taken care of by finalize_and_check()
+	# We have to account for the rate we have taken away from
+	# TODO: Gotta figure out what to do. Should we just leave the states floating and have them be taken care of by finalize_and_check()
 
 # This can become a lemma when we eventually use Nagini to verify this
 def sanity_check():
@@ -328,18 +348,18 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 				deadlock_idxs.append(state.idx)
 				state.perimeter = False
 				continue
-			else:
-				if len(State.commutable_transitions) > 0:
-					pass  # TODO
-				if len(State.orthocycles) > 0:
-					pass  # TODO
-				if len(State.non_orthocycles) > 0:
-					pass  # TODO
+			# else:
+			# 	if len(State.commutable_transitions) > 0:
+			# 		pass  # TODO
+			# 	if len(State.orthocycles) > 0:
+			# 		pass  # TODO
+			# 	if len(State.non_orthocycles) > 0:
+			# 		pass  # TODO
 			# Expand the state and create transitions ONLY TO EXISTING STATES
 			successors, total_exit_rate = state.successors(True)
 			total_full_rate = state.get_total_outgoing_rate()
 			# states not expanded will go to the absorbing state
-			rate_to_abs = total_full_rate - total_exit_rate - state.total_cycle_exit
+			rate_to_abs = total_full_rate - total_exit_rate
 			for s, rate in successors:
 				stup = s  # tuple(s.vec)
 				if stup in state_ids:

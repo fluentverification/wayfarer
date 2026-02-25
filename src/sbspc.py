@@ -125,8 +125,7 @@ class State:
 	total_offset : np.matrix = None
 	# Cycle and commute stuff. There is a list of known useful cycles, orthocycles,
 	# and trivially commutable transitions
-	orthocycles			: list = []
-	non_orthocycles		: list = []
+	cycles			: list = []
 	commutable_transitions : list = []
 	# @staticmethod
 
@@ -141,7 +140,7 @@ class State:
 			ctrans = [(idx, transition) for idx, transition in enumerate(
 				crn.transitions) if is_cyclable(transition, State.subspaces[0])]
 			# print([transition.vec_as_mat.T for _, transition in ctrans])
-			cycles = get_cycles(crn, ctrans)
+			State.cycles = get_cycles(crn, ctrans)
 
 		else:
 			# Do not create subspaces. Will only compare actual euclidian distance
@@ -274,6 +273,9 @@ class State:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)
+				if rate < 0.0:
+					print(
+						f"Error: Got rate {rate} < 0.0 for state {self.vec} with index {self.idx} and update vector {t.name}")
 				assert (rate >= 0.0)
 				# if we get a zero rate we can ignore things
 				if rate == 0.0:
