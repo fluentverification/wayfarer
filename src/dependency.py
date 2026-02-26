@@ -8,7 +8,7 @@ from util import *
 
 # from stormpy import Rational
 
-def null(A : np.matrix, eps : float=1e-7):
+def null(A : np.matrix, eps : float = 1e-7):
 	u, s, vh = np.linalg.svd(A, full_matrices=1, compute_uv=1)
 	null_space = np.compress(s <= eps, vh, axis=0)
 	return null_space.H
@@ -17,7 +17,8 @@ class Node:
 	'''
 	A Node in the dependency graph
 	'''
-	def __init__(self, reaction, level = 0, count = 1):
+
+	def __init__(self, reaction, level=0, count=1):
 		'''
 		A constructor for a node with no successors
 		'''
@@ -26,7 +27,7 @@ class Node:
 		self.level = level
 		self.count = count
 
-	def __init__(self, reaction, children, level = 0, count = 1):
+	def __init__(self, reaction, children, level=0, count=1):
 		'''
 		A constructor for a node with successors (children)
 		'''
@@ -45,6 +46,7 @@ class Reaction:
 	'''
 	A reaction (can read in a line from a ragtimer file)
 	'''
+
 	def __init__(self, name, in_species, out_species):
 		'''
 		Basic constructor if we know species used and produced
@@ -101,6 +103,7 @@ class DepGraph:
 	'''
 	A basic graph class for the entire dependency graph
 	'''
+
 	def __init__(self, reactions, species_names, desired_values, init_state):
 		'''
 		Builds the dependency graph
@@ -120,7 +123,7 @@ class DepGraph:
 		self.graph_root = self.create_graph(desired_values, init_state)
 
 	def __init__(self, ragtimer_lines, agnostic=False):
-		self.agnostic=agnostic
+		self.agnostic = agnostic
 		self.producers = {}
 		self.consumers = {}
 		self.reaction_levels = []
@@ -136,9 +139,11 @@ class DepGraph:
 		# The particular solution for the solution space.
 		self.particular_solution = np.multiply(self.desired_values, self.mask)
 		# The basis vectors describing the entire solution space
-		self.sat_basis = [] # [np.matrix([float(i == j and self.mask[i][0, 0] == 0) for j in range(len(self.particular_solution))]).T for i in range(len(self.mask))]
+		# [np.matrix([float(i == j and self.mask[i][0, 0] == 0) for j in range(len(self.particular_solution))]).T for i in range(len(self.mask))]
+		self.sat_basis = []
 		for i in range(len(self.mask)):
-			v = np.matrix([float(i == j and self.mask[i][0, 0] == 0) for j in range(len(self.particular_solution))]).T
+			v = np.matrix([float(i == j and self.mask[i][0, 0] == 0)
+			              for j in range(len(self.particular_solution))]).T
 			if (v != 0).any():
 				self.sat_basis.append(v)
 		self.desired_values = desired_values
@@ -201,13 +206,13 @@ class DepGraph:
 				return zeros
 			return f
 
-	def create_graph(self, change, level = 0):
+	def create_graph(self, change, level=0):
 		'''
 		Recursive function that creates the graph
 		'''
 		# Decreases the values in the change vector
 		successors = []
-		hashable_change = tuple([float(f) for f in change])
+		hashable_change = tuple([f[0, 0] for f in change])
 		if hashable_change in self.visited_changes:
 			return
 		self.visited_changes[hashable_change] = True
@@ -219,9 +224,11 @@ class DepGraph:
 			if c > 0:
 				self.used_species[species] = True
 				if not species in self.producers:
-					print(f"Unable to continue this path to satisfiability! (This is not an error): produce {species}")
+					print(
+						f"Unable to continue this path to satisfiability! (This is not an error): produce {species}")
 					continue
-				if not self.agnostic and self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0): # 0:
+				# 0:
+				if not self.agnostic and self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0):
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
@@ -231,7 +238,8 @@ class DepGraph:
 			elif c < 0:
 				self.used_species[species] = True
 				if not species in self.consumers:
-					print(f"Unable to continue this path to satisfiability! (This is not an error): consume {species}")
+					print(
+						f"Unable to continue this path to satisfiability! (This is not an error): consume {species}")
 					continue
 				if not self.agnostic and self.init_state[species_idx] <= c + max(self.desired_values[species_idx], 0):
 					continue
@@ -251,13 +259,15 @@ class DepGraph:
 				# We need a producer reaction
 				if not species in self.producers:
 					continue
-				if not self.agnostic and self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0): # max(self.desired_values[species_idx], 0):
+				# max(self.desired_values[species_idx], 0):
+				if not self.agnostic and self.init_state[species_idx] >= c + max(self.desired_values[species_idx], 0):
 					continue
 				spec_producers = self.producers[species]
 				for producer in spec_producers:
 					if producer.name in self.used_reactions and not producer.name in allowed_reactions:
 						continue
-					producer_idxs = [self.species_names.index(producer_species) for producer_species in producer.in_species if producer_species not in self.used_species]
+					producer_idxs = [self.species_names.index(
+						producer_species) for producer_species in producer.in_species if producer_species not in self.used_species]
 					new_change = np.matrix([float(i in producer_idxs) for i in range(len(self.mask))]).T
 					count = abs(c)
 					# self.declare_reaction_at_level(producer, level)
@@ -268,7 +278,8 @@ class DepGraph:
 				# We need a consumer reaction
 				if not species in self.consumers:
 					continue
-				if not self.agnostic and self.init_state[species_idx] <= c + max(self.desired_values[species_idx], 0): # max(self.desired_values[species_idx], 0):
+				# max(self.desired_values[species_idx], 0):
+				if not self.agnostic and self.init_state[species_idx] <= c + max(self.desired_values[species_idx], 0):
 					continue
 
 				spec_consumers = self.consumers[species]
@@ -276,7 +287,8 @@ class DepGraph:
 				for consumer in spec_consumers:
 					if consumer.name in self.used_reactions and not consumer.name in allowed_reactions:
 						continue
-					consumer_idxs = [self.species_names.index(consumer_species) for consumer_species in consumer.in_species if consumer_species not in self.used_species]
+					consumer_idxs = [self.species_names.index(
+						consumer_species) for consumer_species in consumer.in_species if consumer_species not in self.used_species]
 					# We want reactions that PRODUCE these in species, so this consumer can fire.
 					# ex., if A + B -> None, and we want to consume B, we must first PRODUCE A
 					count = float(abs(c))
@@ -377,7 +389,7 @@ class DepGraph:
 			used_transitions = available_reactions[:idx + 1]
 			unused_transitions = available_reactions[idx + 1:]
 			last_layer = available_reactions[last_idx:idx]
-			subspace = Subspace(used_transitions, unused_transitions) #, last_layer)
+			subspace = Subspace(used_transitions, unused_transitions)  # , last_layer)
 			# print(f"Last layer is {[t.name for t in last_layer]}")
 			subspaces.append(subspace)
 		subspaces.reverse()
