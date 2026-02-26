@@ -138,7 +138,7 @@ class State:
 				crn, State.subspaces[0], State.subspaces[len(State.subspaces) - 1])
 			# Populate cycles
 			ctrans = [(idx, transition) for idx, transition in enumerate(
-				crn.transitions) if is_cyclable(transition, State.subspaces[0])]
+				crn.transitions)]  # if is_cyclable(transition, State.subspaces[0])]
 			# print([transition.vec_as_mat.T for _, transition in ctrans])
 			State.cycles = get_cycles(crn, ctrans)
 

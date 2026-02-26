@@ -137,16 +137,20 @@ and ensures that all of the nullvectors are also of type int.
 	return ns
 	# return null_space(R) # Todo: turn into list of columns
 
-def get_cycles(crn: Crn, transitions: list, num: int = 2) -> list:
+def get_cycles(crn: Crn, transitions: list, num: int = 3) -> list:
 	matrix = np.column_stack([t.vec_as_mat.copy() for _, t in transitions])
 	tran_to_idx = [idx for idx, _ in transitions]
-	vecs = get_cycle_vectors(matrix, num)
+	max_rate_const = np.max([t.rate_constant for _, t in transitions])
+	weights = [max_rate_const * 1 / max(t.rate_constant, 1) for _, t in transitions]
+	vecs = get_cycle_vectors(matrix, num, weights=weights)
 	return cycles_from_cycle_vectors(vecs, crn, tran_to_idx)
 
-def get_cycle_vectors(R : np.matrix, num=5):
+def get_cycle_vectors(R : np.matrix, num=5, weights: list | None = None):
 	'''
 Any positive integer linear combination of the nullvectors of R are the cycles
 of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
+
+The weights are how important it is to minimize each variable
 	'''
 	# TODO: add support for combinations beyond that
 	print("[WARNING] Wayfarer only supports \"first level\" cycle detection currently. This means only linear combinations of null vectors with coefficients equal to 1 or 0")
@@ -160,6 +164,9 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 	n = R.shape[1]  # Number of columns
 	x = [LpVariable(f'x{i}', lowBound=0, upBound=2, cat='Integer') for i in range(n)]
 
+	if weights is not None:
+		assert len(weights) == n
+
 	while len(cycles) < num:
 		# clear previous problem
 		problem += lpSum(0)
@@ -167,9 +174,13 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 		for row in R.tolist():
 			problem += lpSum(row[j] * x[j] for j in range(n)) == 0
 
-		# Minimize L1 norm (smaller cycles) -- only on the first iteration
+		# Minimize either L1 norm or weighted L1 norm (smaller cycles) -- only on the first iteration
 		# if len(cycles) == 0:
-		problem += lpSum(x)
+		if weights is not None:
+			problem += lpSum(weights[j] * x[j] for j in range(n))
+		else:
+			# There are no weights so we just minimize L1 Norm
+			problem += lpSum(x)
 
 		# Add a constraint to ensure x is not the zero vector
 		problem += lpSum(x) >= 1  # At least one component must be greater than zero
