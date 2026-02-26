@@ -55,11 +55,11 @@ def get_commutable_transitions(crn : Crn, s0, _ss) -> list:
 	transitions = []
 	for t in crn.transitions:
 		# TODO: need offset?
-		print(t.vec_as_mat.T)
+		# print(t.vec_as_mat.T)
 		# If the transition's update vector is orthogonal to S0, then it is very likely commutable
-		print((s0.P * t.vec_as_mat).T)
-		print(np.isclose(s0.P * t.vec_as_mat, 0).T)
-		print(np.all(np.isclose(s0.P * t.vec_as_mat, 0).T))
+		# print((s0.P * t.vec_as_mat).T)
+		# print(np.isclose(s0.P * t.vec_as_mat, 0).T)
+		# print(np.all(np.isclose(s0.P * t.vec_as_mat, 0).T))
 		if np.all(np.isclose(s0.P * t.vec_as_mat, 0)):
 			transitions.append(t)
 	print(f"[INFO] Got {len(transitions)} trivially commutable transitions: {
@@ -137,7 +137,7 @@ and ensures that all of the nullvectors are also of type int.
 	return ns
 	# return null_space(R) # Todo: turn into list of columns
 
-def get_cycles(crn: Crn, transitions: list, num: int = 5) -> list:
+def get_cycles(crn: Crn, transitions: list, num: int = 2) -> list:
 	matrix = np.column_stack([t.vec_as_mat.copy() for _, t in transitions])
 	tran_to_idx = [idx for idx, _ in transitions]
 	vecs = get_cycle_vectors(matrix, num)

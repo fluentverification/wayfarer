@@ -58,8 +58,28 @@ class RandomAccessSparseMatrixBuilder:
 		while len(self.from_list) <= row:
 			self.from_list.append([])
 		if row == col:
-			assert (self.from_list[row] == 0.0)
+			if len(self.from_list[row]) == 1:
+				print(f"[Warning]: overwriting self-loop rate on state {row}")
+				self.from_list[row][0].val = val
+				return
+			elif len(self.from_list[row]) > 1:
+				raise Exception("Cannot add self-loop on CTMC with exit edges")
 		self.from_list[row].append(Entry(col, val))
+
+	def remove_self_loop(self, row: int):
+		'''
+	Removes a self-loop if it exists. If not, does nothing
+		'''
+		if len(self.from_list) <= row:
+			return
+		self.from_list[row] = [e for e in self.from_list[row] if e.col != row]
+
+	def subtract_from_abs(self, row: int, val_to_subtract: float):
+		'''
+	Subtracts from the rate going to the absorbing state for a particular state.
+		'''
+		abs_edges = [i for i, e in enumerate(self.from_list[row]) if e.col == 0]
+		assert len(abs_edges) == 1
 
 	def has_entry(self, row: int, col: int) -> bool:
 		if len(self.from_list) <= row:
@@ -82,11 +102,21 @@ class RandomAccessSparseMatrixBuilder:
 				col = entry.col
 				val = entry.val
 				if row == col:
-					assert (len(self.from_list[row]) == 1)
+					if len(self.from_list[row]) != 1:
+						raise Exception(f"State {row} should only have one edge: a self loop. Got {
+						                len(self.from_list[row])} edges!\n{','.join([str(e) for e in self.from_list[row]])}")
 					matrix_builder.add_next_value(row, col, 1.0)
 					break
 				matrix_builder.add_next_value(row, col, val)
 		return matrix_builder
+
+	def deadlocks(self) -> list:
+		def is_deadlock(row: list, state_idx: int):
+			if len(row) > 1 or len(row) == 0:
+				return False
+			else:
+				return row[0].col == state_idx
+		return [i for i, e in enumerate(self.from_list) if is_deadlock(e, i)]
 
 	def build(self):
 		'''
@@ -140,7 +170,6 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	all_states.append(init_state)
 	pq.put((init_state))
 	last_index += 1
-	deadlock_idxs = [0]
 	# The number of explored and satisfying states
 	num_satstates = 0
 	num_explored = 0
@@ -158,7 +187,6 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			# We will create a self-loop later, so declare the total exit rate as 1.0
 			matrixBuilder.add_exit_rate(curr_state_data.idx, 1.0)
 			matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
-			deadlock_idxs.append(curr_state_data.idx)
 			curr_state_data.perimeter = False
 			continue
 
@@ -208,11 +236,11 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	if num_satstates == 0:
 		print(f"Could not find any satisfying states!")
 		return
-	apply_cycles(matrixBuilder, sat_states, deadlock_idxs, crn, last_index)
+	apply_cycles(matrixBuilder, sat_states, crn, last_index)
 	sanity_check()
-	finalize_and_check(matrixBuilder, sat_states, deadlock_idxs, time_bound, crn)
+	finalize_and_check(matrixBuilder, sat_states, time_bound, crn)
 
-def apply_cycles(matrixBuilder, satisfying_state_idxs, deadlock_idxs, crn, next_available_idx):
+def apply_cycles(matrixBuilder, satisfying_state_idxs, crn, next_available_idx):
 	if len(State.cycles) == 0:
 		print("Cannot apply cycles! No cycles exist!")
 		return
@@ -224,6 +252,9 @@ def apply_cycles(matrixBuilder, satisfying_state_idxs, deadlock_idxs, crn, next_
 	# First we will apply all of the cycles, creating internal connections, and then create connections
 	# between states that have been newly created if there is a one-step transition between them.
 	for state in all_states[1::]:
+		# Do not apply cycles to satisfying states
+		if satisfies(state.vec, crn.boundary):
+			continue
 		# We need to iterate over the states first, then the cycles.
 		for cycle in State.cycles:
 			# We can apply the cycle forward and backward. We apply forward first.
@@ -247,6 +278,7 @@ def apply_cycles(matrixBuilder, satisfying_state_idxs, deadlock_idxs, crn, next_
 						continue
 					if cur_state_idx == next_idx:
 						print(f"Warning: Wanted self-loop on index {next_idx}")
+					matrixBuilder.remove_self_loop(cur_state_idx)
 					matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
 					cur_state = all_states[next_idx]
 					cur_state_idx = next_idx
@@ -255,8 +287,13 @@ def apply_cycles(matrixBuilder, satisfying_state_idxs, deadlock_idxs, crn, next_
 					# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
 					# in the graph, since otherwise finalize_and_check() will take care of that
 					if last_state_in_graph:
+						matrixBuilder.remove_self_loop(cur_state_idx)
 						matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
 					next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
+					if satisfies(next_state_vec, crn.boundary):
+						satisfying_state_idxs.append(next_available_idx)
+						# We do not need to continue down this cycle
+						break
 					next_available_idx += 1
 					next_state.perimeter = True
 					all_states.append(next_state)
@@ -282,6 +319,7 @@ def apply_cycles(matrixBuilder, satisfying_state_idxs, deadlock_idxs, crn, next_
 						continue
 					if cur_state_idx == next_idx:
 						print(f"Warning: Wanted self-loop on index {next_idx}")
+					matrixBuilder.remove_self_loop(cur_state_idx)
 					matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
 					cur_state = all_states[next_idx]
 					cur_state_idx = next_idx
@@ -290,9 +328,14 @@ def apply_cycles(matrixBuilder, satisfying_state_idxs, deadlock_idxs, crn, next_
 					# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
 					# in the graph, since otherwise finalize_and_check() will take care of that
 					if last_state_in_graph:
+						matrixBuilder.remove_self_loop(cur_state_idx)
 						matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
 
 					next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
+					if satisfies(next_state_vec, crn.boundary):
+						satisfying_state_idxs.append(next_available_idx)
+						# We do not need to continue down this cycle
+						break
 					next_available_idx += 1
 					next_state.perimeter = True
 					all_states.append(next_state)
@@ -329,7 +372,7 @@ def sanity_check():
 		idx += 1
 	print("done.")
 
-def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, deadlock_idxs : list, time_bound : int, crn : Crn = None):
+def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, time_bound : int, crn : Crn = None):
 	global state_ids
 	# First, connect all terminal states to absorbing
 	global all_states
@@ -345,7 +388,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 				# We will create a self-loop later, so declare the total exit rate as 1.0
 				matrixBuilder.add_exit_rate(state.idx, 1.0)
 				matrixBuilder.add_next_value(state.idx, state.idx, 1.0)
-				deadlock_idxs.append(state.idx)
+				# deadlock_idxs.append(state.idx)
 				state.perimeter = False
 				continue
 			# else:
@@ -373,6 +416,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	if num_perim_satstates > 0:
 		print(f"We found an additional {
 		      num_perim_satstates} satisfying states in the perimeter state indecies!")
+	deadlock_idxs = matrixBuilder.deadlocks()
 	matrix = matrixBuilder.build()
 	matrixBuilder.assert_all_entries_correct()
 	labeling = StateLabeling(matrixBuilder.size())
