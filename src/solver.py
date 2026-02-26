@@ -143,7 +143,7 @@ class RandomAccessSparseMatrixBuilder:
 				continue
 			max_entry = max(self.from_list[i])
 			max_rate = max_entry.val
-			if self.exit_rates[i] is not None and not self.exit_rates[i] >= max_rate:
+			if self.exit_rates[i] is not None and not self.exit_rates[i] >= max_rate and not np.isclose(self.exit_rates[i] - max_rate, 0):
 				print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
 			assert (self.exit_rates[i] is None or (self.exit_rates[i] >=
 			        max_rate or math.isclose(max_rate, self.exit_rates[i])))
@@ -236,19 +236,19 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	if num_satstates == 0:
 		print(f"Could not find any satisfying states!")
 		return
-	apply_cycles(matrixBuilder, sat_states, crn, last_index)
+	apply_cycles(matrixBuilder, crn, last_index)
 	sanity_check()
 	finalize_and_check(matrixBuilder, sat_states, time_bound, crn)
 
-def apply_cycles(matrixBuilder, satisfying_state_idxs, crn, next_available_idx):
+def apply_cycles(matrixBuilder, crn, next_available_idx):
 	if len(State.cycles) == 0:
 		print("Cannot apply cycles! No cycles exist!")
 		return
-	print(f"Applying {len(State.cycles)} cycles...", end="")
+	print(f"Applying {len(State.cycles)} cycles...", end="", flush=True)
+	start_time = time.time()
 	global all_states
 	global state_ids
 	assert next_available_idx == len(all_states)
-	new_cycle_states = []
 	# First we will apply all of the cycles, creating internal connections, and then create connections
 	# between states that have been newly created if there is a one-step transition between them.
 	for state in all_states[1::]:
@@ -262,6 +262,7 @@ def apply_cycles(matrixBuilder, satisfying_state_idxs, crn, next_available_idx):
 			cur_state_idx = state.idx
 			last_state_in_graph = True
 			for t in cycle.ordered_reactions:
+				assert next_available_idx == len(all_states)
 				if not t.enabled(cur_state.vecm):
 					break
 				# Get the next state and see if it's new or not
@@ -290,19 +291,21 @@ def apply_cycles(matrixBuilder, satisfying_state_idxs, crn, next_available_idx):
 						matrixBuilder.remove_self_loop(cur_state_idx)
 						matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
 					next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
-					if satisfies(next_state_vec, crn.boundary):
-						satisfying_state_idxs.append(next_available_idx)
-						# We do not need to continue down this cycle
-						break
+
 					next_available_idx += 1
 					next_state.perimeter = True
 					all_states.append(next_state)
-					new_cycle_states.append(next_state)
 					last_state_in_graph = False
+					if satisfies(next_state_vec, crn.boundary):
+						# NOTE: since it is a perimeter state, its index will be added to satisfying_state_idxs in finalize_and_check()
+						# satisfying_state_idxs.append(next_available_idx)
+						# We do not need to continue down this cycle
+						break
 			cur_state = state
 			cur_state_idx = state.idx
 			last_state_in_graph = True
 			for t in cycle.ordered_reactions[::-1]:
+				assert next_available_idx == len(all_states)
 				if not t.enabled(cur_state.vecm):
 					break
 				# Get the next state and see if it's new or not
@@ -332,44 +335,31 @@ def apply_cycles(matrixBuilder, satisfying_state_idxs, crn, next_available_idx):
 						matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
 
 					next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
-					if satisfies(next_state_vec, crn.boundary):
-						satisfying_state_idxs.append(next_available_idx)
-						# We do not need to continue down this cycle
-						break
+
 					next_available_idx += 1
 					next_state.perimeter = True
 					all_states.append(next_state)
-					new_cycle_states.append(next_state)
 					last_state_in_graph = False
-	print("...finished")
-	# # Next, we need to expand successors for all of these newly created state
-	# for state in new_cycle_states:
-	# 	successors, total_expanded_rate = state.successors(all_successors=True)
-	# 	for s, rate in successors:
-	# 		next_state_vec = s.vec
-	# 		ns = tuple(next_state_vec)
-	# 		if ns not in state_ids:
-	# 			# We should not create this state or give it an ID. However, we have to handle the rate going to it.
-	# 			# The rate going to that state should go to the absorbing state, however, it is included in total_expanded_rate
-	# 			# in finalize_and_check(). So, we have to account for it. The way we do that is kind of "hackey": we SUBTRACT the
-	# 			# rate from state.total_cycle_exit
-	# 			state.total_cycle_exit -= rate
-	# 			continue
-	# 		else:
-	# 			next_state_id = state_ids[ns]
-
-	# We have to account for the rate we have taken away from
-	# TODO: Gotta figure out what to do. Should we just leave the states floating and have them be taken care of by finalize_and_check()
+					if satisfies(next_state_vec, crn.boundary):
+						# NOTE: since it is a perimeter state, its index will be added to satisfying_state_idxs in finalize_and_check()
+						# satisfying_state_idxs.append(next_available_idx)
+						# We do not need to continue down this cycle
+						break
+	print(f"...finished after {time.time() - start_time} seconds.")
 
 # This can become a lemma when we eventually use Nagini to verify this
 def sanity_check():
 	print("Performing sanity check...", end="")
 	global all_states
+	global state_ids
 	# Check our indecies
 	idx = 0
 	for state in all_states:
 		assert (state is None or state.idx == idx)
 		idx += 1
+	# TODO: remove this intensive check when we've found the bug
+	# for _, sid in state_ids.items():
+	# 	assert sid < len(all_states)
 	print("done.")
 
 def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, time_bound : int, crn : Crn = None):
@@ -419,6 +409,9 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	deadlock_idxs = matrixBuilder.deadlocks()
 	matrix = matrixBuilder.build()
 	matrixBuilder.assert_all_entries_correct()
+	assert matrixBuilder.size() == len(all_states)
+	assert matrix.nr_rows == matrixBuilder.size()
+	print(f"Number of rows in matrix: {matrix.nr_rows}")
 	labeling = StateLabeling(matrixBuilder.size())
 	# Add initial state labeling
 	labeling.add_label("init")
@@ -427,15 +420,18 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	labeling.add_label("absorbing")
 	labeling.add_label_to_state("absorbing", 0)
 	for idx in satisfying_state_idxs:
+		assert idx < matrix.nr_rows
 		labeling.add_label_to_state("satisfy", idx)
 	# Add the deadlock state indexes
 	labeling.add_label("deadlock")
 	for idx in deadlock_idxs:
+		assert idx < matrix.nr_rows
 		labeling.add_label_to_state("deadlock", idx)
 	components = SparseModelComponents(matrix, labeling, {}, rate_transitions=True)
 	prop_bound = "" if time_bound is None else f"[0, {time_bound}]"
 	chk_property = f"P=? [ true U{prop_bound} \"satisfy\" ]"
 	exit_rates = [rate if rate is not None else 1.0 for rate in matrixBuilder.exit_rates]
+	assert len(exit_rates) == matrix.nr_rows
 	components.exit_rates = exit_rates
 	# print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
 	model = stormpy.storage.SparseCtmc(components)
