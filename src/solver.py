@@ -55,6 +55,10 @@ class RandomAccessSparseMatrixBuilder:
 		self.exit_rates = [1.0]
 
 	def add_next_value(self, row : int, col : int, val : float):
+		if col == 93116:
+			print(f"Found entry from state {row} to state {col} with value {val}")
+		if row == 93116:
+			raise Exception(f"Attempting to insert entry (93116,{col}):{val}")
 		while len(self.from_list) <= row:
 			self.from_list.append([])
 		if row == col:
@@ -132,6 +136,13 @@ class RandomAccessSparseMatrixBuilder:
 		while len(self.exit_rates) <= idx:
 			self.exit_rates.append(None)
 		self.exit_rates[idx] = rate
+
+	def row_sum(self, row: int) -> float:
+		assert row < len(self.from_list)
+		sm = 0.0
+		for e in self.from_list[row]:
+			sm += e.val
+		return sm
 
 	def assert_all_entries_correct(self):
 		# assert(len(self.exit_rates) == len(self.from_list))
@@ -257,94 +268,55 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 			continue
 		# We need to iterate over the states first, then the cycles.
 		for cycle in State.cycles:
-			# We can apply the cycle forward and backward. We apply forward first.
-			cur_state = state
-			cur_state_idx = state.idx
-			last_state_in_graph = True
-			for t in cycle.ordered_reactions:
-				assert next_available_idx == len(all_states)
-				if not t.enabled(cur_state.vecm):
-					break
-				# Get the next state and see if it's new or not
-				next_state_vec = cur_state.vec + t.vector
-				if np.any(next_state_vec < 0.0):
-					break
-				rate = t.rate_finder(cur_state.vec)
-				nsvt = tuple(next_state_vec)
-				if nsvt in state_ids:
-					# State is not new, just add it to the matrix builder
-					next_idx = state_ids[nsvt]
-					if matrixBuilder.has_entry(cur_state_idx, next_idx):
-						# No need to add the entry since it already exists
-						continue
-					if cur_state_idx == next_idx:
-						print(f"Warning: Wanted self-loop on index {next_idx}")
-					matrixBuilder.remove_self_loop(cur_state_idx)
-					matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
-					cur_state = all_states[next_idx]
-					cur_state_idx = next_idx
-					last_state_in_graph = True
-				else:
-					# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
-					# in the graph, since otherwise finalize_and_check() will take care of that
-					if last_state_in_graph:
+			# We have to go both forwards and backwards
+			for directed_cycle in [cycle.ordered_reactions, cycle.ordered_reactions[::-1]]:
+				# We can apply the cycle forward and backward. We apply forward first.
+				cur_state = state
+				cur_state_idx = state.idx
+				for t in directed_cycle:
+					assert next_available_idx == len(all_states)
+					if not t.enabled(cur_state.vecm):
+						break
+					# Get the next state and see if it's new or not
+					next_state_vec = cur_state.vec + t.vector
+					if np.any(next_state_vec < 0.0):
+						break
+
+					cur_state.perimeter = False
+					cur_state_exit_rate = matrixBuilder.exit_rates[cur_state.idx]
+					rate = t.rate_finder(cur_state.vec)
+					nsvt = tuple(next_state_vec)
+					if nsvt in state_ids:
+						# State is not new, just add it to the matrix builder
+						next_idx = state_ids[nsvt]
+						if matrixBuilder.has_entry(cur_state_idx, next_idx):
+							# No need to add the entry since it already exists
+							continue
+						if cur_state_idx == next_idx:
+							print(f"Warning: Wanted self-loop on index {next_idx}")
+						matrixBuilder.remove_self_loop(cur_state_idx)
+						matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
+						cur_state = all_states[next_idx]
+						cur_state_idx = next_idx
+					else:
+						# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
+						# in the graph, since otherwise finalize_and_check() will take care of that
 						matrixBuilder.remove_self_loop(cur_state_idx)
 						matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
-					next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
+						next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
 
-					next_available_idx += 1
-					next_state.perimeter = True
-					all_states.append(next_state)
-					last_state_in_graph = False
-					if satisfies(next_state_vec, crn.boundary):
-						# NOTE: since it is a perimeter state, its index will be added to satisfying_state_idxs in finalize_and_check()
-						# satisfying_state_idxs.append(next_available_idx)
-						# We do not need to continue down this cycle
-						break
-			cur_state = state
-			cur_state_idx = state.idx
-			last_state_in_graph = True
-			for t in cycle.ordered_reactions[::-1]:
-				assert next_available_idx == len(all_states)
-				if not t.enabled(cur_state.vecm):
-					break
-				# Get the next state and see if it's new or not
-				next_state_vec = cur_state.vec + t.vector
-				if np.any(next_state_vec < 0.0):
-					break
-				rate = t.rate_finder(cur_state.vec)
-				nsvt = tuple(next_state_vec)
-				if nsvt in state_ids:
-					# State is not new, just add it to the matrix builder
-					next_idx = state_ids[nsvt]
-					if matrixBuilder.has_entry(cur_state_idx, next_idx):
-						# No need to add the entry since it already exists
-						continue
-					if cur_state_idx == next_idx:
-						print(f"Warning: Wanted self-loop on index {next_idx}")
-					matrixBuilder.remove_self_loop(cur_state_idx)
-					matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
-					cur_state = all_states[next_idx]
-					cur_state_idx = next_idx
-					last_state_in_graph = True
-				else:
-					# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
-					# in the graph, since otherwise finalize_and_check() will take care of that
-					if last_state_in_graph:
-						matrixBuilder.remove_self_loop(cur_state_idx)
-						matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
-
-					next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
-
-					next_available_idx += 1
-					next_state.perimeter = True
-					all_states.append(next_state)
-					last_state_in_graph = False
-					if satisfies(next_state_vec, crn.boundary):
-						# NOTE: since it is a perimeter state, its index will be added to satisfying_state_idxs in finalize_and_check()
-						# satisfying_state_idxs.append(next_available_idx)
-						# We do not need to continue down this cycle
-						break
+						total_outgoing_rate = next_state.get_total_outgoing_rate()
+						matrixBuilder.add_exit_rate(next_state.idx, total_outgoing_rate)
+						next_available_idx += 1
+						next_state.perimeter = True
+						all_states.append(next_state)
+						cur_state = next_state
+						cur_state_idx = next_state.idx
+						if satisfies(next_state_vec, crn.boundary):
+							# NOTE: since it is a perimeter state, its index will be added to satisfying_state_idxs in finalize_and_check()
+							# satisfying_state_idxs.append(next_available_idx)
+							# We do not need to continue down this cycle
+							break
 	print(f"...finished after {time.time() - start_time} seconds.")
 
 # This can become a lemma when we eventually use Nagini to verify this
@@ -411,6 +383,8 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	matrixBuilder.assert_all_entries_correct()
 	assert matrixBuilder.size() == len(all_states)
 	assert matrix.nr_rows == matrixBuilder.size()
+	print(f"Shape (Row, Col): {matrix.nr_rows}, {matrix.nr_columns}")
+	assert matrix.nr_columns == matrix.nr_rows
 	print(f"Number of rows in matrix: {matrix.nr_rows}")
 	labeling = StateLabeling(matrixBuilder.size())
 	# Add initial state labeling
