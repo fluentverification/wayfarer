@@ -260,11 +260,11 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	if num_satstates == 0:
 		print(f"Could not find any satisfying states!")
 		return
-	apply_cycles(matrixBuilder, crn, last_index)
+	apply_cycles(matrixBuilder, crn, last_index, sat_states)
 	sanity_check()
 	finalize_and_check(matrixBuilder, sat_states, time_bound, crn)
 
-def apply_cycles(matrixBuilder, crn, next_available_idx):
+def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 	if len(State.cycles) == 0:
 		print("Cannot apply cycles! No cycles exist!")
 		return
@@ -329,7 +329,7 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 
 						total_outgoing_rate = next_state.get_total_outgoing_rate()
 						next_available_idx += 1
-						next_state.perimeter = True
+						# next_state.perimeter = True
 						all_states.append(next_state)
 						cur_state = next_state
 						cur_state_idx = next_state.idx
@@ -338,6 +338,7 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 							# satisfying_state_idxs.append(next_available_idx)
 							# We do not need to continue down this cycle
 							# cycle_states.add(next_state.idx)
+							sat_indecies.append(next_state.idx)
 							break
 	cycle_state_idxs_maximum = next_available_idx - 1
 
