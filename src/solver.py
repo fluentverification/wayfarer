@@ -55,10 +55,6 @@ class RandomAccessSparseMatrixBuilder:
 		self.exit_rates = [1.0]
 
 	def add_next_value(self, row : int, col : int, val : float):
-		if col == 93116:
-			print(f"Found entry from state {row} to state {col} with value {val}")
-		if row == 93116:
-			raise Exception(f"Attempting to insert entry (93116,{col}):{val}")
 		while len(self.from_list) <= row:
 			self.from_list.append([])
 		if row == col:
@@ -77,6 +73,12 @@ class RandomAccessSparseMatrixBuilder:
 		if len(self.from_list) <= row:
 			return
 		self.from_list[row] = [e for e in self.from_list[row] if e.col != row]
+		self.exit_rates[row] = None
+
+	def remove_absorbing_edge(self, row: int):
+		if len(self.from_list) <= row:
+			return
+		self.from_list[row] = [e for e in self.from_list[row] if e.col != 0]
 
 	def subtract_from_abs(self, row: int, val_to_subtract: float):
 		'''
@@ -84,6 +86,8 @@ class RandomAccessSparseMatrixBuilder:
 		'''
 		abs_edges = [i for i, e in enumerate(self.from_list[row]) if e.col == 0]
 		assert len(abs_edges) == 1
+		self.from_list[row][abs_edges[0]].val -= val_to_subtract
+		assert self.from_list[row][abs_edges[0]].val >= 0
 
 	def has_entry(self, row: int, col: int) -> bool:
 		if len(self.from_list) <= row:
@@ -158,6 +162,12 @@ class RandomAccessSparseMatrixBuilder:
 				print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
 			assert (self.exit_rates[i] is None or (self.exit_rates[i] >=
 			        max_rate or math.isclose(max_rate, self.exit_rates[i])))
+			# TODO: remove this extra check
+			rs = self.row_sum(i)
+			if not np.isclose(self.exit_rates[i], rs):
+				self.exit_rates[i] = rs
+				# raise Exception(f"State {i} has differing exit rates and row sums! {
+				#                self.exit_rates[i]} vs {rs}")
 
 def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False, single_order=False, cnc=False):
 	global all_states
@@ -260,11 +270,18 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 	global all_states
 	global state_ids
 	assert next_available_idx == len(all_states)
+	# The set of all states encountered by cycle and commute
+	cycle_states = set()
+	# Any state between this and the maximum was guaranteed to have been added by cycle and commute
+	cycle_state_idxs_minimum = next_available_idx
 	# First we will apply all of the cycles, creating internal connections, and then create connections
 	# between states that have been newly created if there is a one-step transition between them.
 	for state in all_states[1::]:
 		# Do not apply cycles to satisfying states
 		if satisfies(state.vec, crn.boundary):
+			continue
+		# Do not apply cycles to perimeter states (we do not want to expand them anyway)
+		if state.perimeter:
 			continue
 		# We need to iterate over the states first, then the cycles.
 		for cycle in State.cycles:
@@ -275,6 +292,9 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 				cur_state_idx = state.idx
 				for t in directed_cycle:
 					assert next_available_idx == len(all_states)
+					# if cur_state.perimeter:
+					# 	break
+					cycle_states.add(cur_state_idx)
 					if not t.enabled(cur_state.vecm):
 						break
 					# Get the next state and see if it's new or not
@@ -282,31 +302,28 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 					if np.any(next_state_vec < 0.0):
 						break
 
-					cur_state.perimeter = False
-					cur_state_exit_rate = matrixBuilder.exit_rates[cur_state.idx]
-					rate = t.rate_finder(cur_state.vec)
+					# cur_state.perimeter = False
+					# rate = t.rate_finder(cur_state.vec)
 					nsvt = tuple(next_state_vec)
 					if nsvt in state_ids:
 						# State is not new, just add it to the matrix builder
 						next_idx = state_ids[nsvt]
-						if matrixBuilder.has_entry(cur_state_idx, next_idx):
-							# No need to add the entry since it already exists
-							continue
+						# if matrixBuilder.has_entry(cur_state_idx, next_idx):
+						# 	# No need to add the entry since it already exists
+						# 	continue
 						if cur_state_idx == next_idx:
 							print(f"Warning: Wanted self-loop on index {next_idx}")
-						matrixBuilder.remove_self_loop(cur_state_idx)
-						matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
+						# matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
 						cur_state = all_states[next_idx]
 						cur_state_idx = next_idx
 					else:
 						# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
 						# in the graph, since otherwise finalize_and_check() will take care of that
-						matrixBuilder.remove_self_loop(cur_state_idx)
-						matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
+						# matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
 						next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
+						state_ids[nsvt] = next_state.idx
 
 						total_outgoing_rate = next_state.get_total_outgoing_rate()
-						matrixBuilder.add_exit_rate(next_state.idx, total_outgoing_rate)
 						next_available_idx += 1
 						next_state.perimeter = True
 						all_states.append(next_state)
@@ -316,7 +333,39 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 							# NOTE: since it is a perimeter state, its index will be added to satisfying_state_idxs in finalize_and_check()
 							# satisfying_state_idxs.append(next_available_idx)
 							# We do not need to continue down this cycle
+							# cycle_states.add(next_state.idx)
 							break
+	cycle_state_idxs_maximum = next_available_idx - 1
+
+	# Nifty little local lambda to tell us if a state was added by cycle and commute
+	def was_added_by_cnc(state_id: int):
+		return state_id >= cycle_state_idxs_minimum and state_id < cycle_state_idxs_maximum
+
+	for state_id in cycle_states:
+		assert state_id != 0
+		state = all_states[state_id]
+		state.perimeter = False
+		total_full_rate = state.get_total_outgoing_rate()
+		if not was_added_by_cnc(state_id):
+			# TODO:: BUG IS SOMEWHERE BETWEEN THESE TWO LINES ===== START
+			matrixBuilder.remove_self_loop(state_id)
+			matrixBuilder.remove_absorbing_edge(state_id)
+			# TODO:: BUG IS SOMEWHERE BETWEEN THESE TWO LINES ===== END
+		# else:
+		matrixBuilder.add_exit_rate(state.idx, total_full_rate)
+		successors, total_exit_rate = state.successors(True)
+		# states not expanded will go to the absorbing state
+		rate_to_abs = total_full_rate - total_exit_rate
+		for stup, rate in successors:
+			if stup in state_ids:
+				next_idx = state_ids[stup]
+				assert next_idx != 0
+				matrixBuilder.add_next_value(state.idx, next_idx, rate)
+			else:
+				rate_to_abs += rate
+		if rate_to_abs > 0.0:
+			matrixBuilder.add_next_value(state.idx, 0, rate_to_abs)
+
 	print(f"...finished after {time.time() - start_time} seconds.")
 
 # This can become a lemma when we eventually use Nagini to verify this
@@ -330,8 +379,8 @@ def sanity_check():
 		assert (state is None or state.idx == idx)
 		idx += 1
 	# TODO: remove this intensive check when we've found the bug
-	# for _, sid in state_ids.items():
-	# 	assert sid < len(all_states)
+	for _, sid in state_ids.items():
+		assert sid < len(all_states)
 	print("done.")
 
 def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, time_bound : int, crn : Crn = None):
@@ -381,6 +430,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	deadlock_idxs = matrixBuilder.deadlocks()
 	matrix = matrixBuilder.build()
 	matrixBuilder.assert_all_entries_correct()
+	print(f"{matrixBuilder.size()} ?= {len(all_states)}")
 	assert matrixBuilder.size() == len(all_states)
 	assert matrix.nr_rows == matrixBuilder.size()
 	print(f"Shape (Row, Col): {matrix.nr_rows}, {matrix.nr_columns}")
