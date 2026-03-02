@@ -97,6 +97,9 @@ class RandomAccessSparseMatrixBuilder:
 				return True
 		return False
 
+	def create_exit_rates(self) -> list:
+		return [self.row_sum(i) for i in range(len(self.from_list))]
+
 	def to_smb(self):
 		'''
 		Creates a stormpy.SparseMatrixBuilder
@@ -163,11 +166,11 @@ class RandomAccessSparseMatrixBuilder:
 			assert (self.exit_rates[i] is None or (self.exit_rates[i] >=
 			        max_rate or math.isclose(max_rate, self.exit_rates[i])))
 			# TODO: remove this extra check
-			rs = self.row_sum(i)
-			if not np.isclose(self.exit_rates[i], rs):
-				self.exit_rates[i] = rs
-				# raise Exception(f"State {i} has differing exit rates and row sums! {
-				#                self.exit_rates[i]} vs {rs}")
+			# rs = self.row_sum(i)
+			# if not np.isclose(self.exit_rates[i], rs):
+			# 	self.exit_rates[i] = rs
+			# 	# raise Exception(f"State {i} has differing exit rates and row sums! {
+			# 	#                self.exit_rates[i]} vs {rs}")
 
 def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False, single_order=False, cnc=False):
 	global all_states
@@ -347,11 +350,8 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 		state.perimeter = False
 		total_full_rate = state.get_total_outgoing_rate()
 		if not was_added_by_cnc(state_id):
-			# TODO:: BUG IS SOMEWHERE BETWEEN THESE TWO LINES ===== START
 			matrixBuilder.remove_self_loop(state_id)
 			matrixBuilder.remove_absorbing_edge(state_id)
-			# TODO:: BUG IS SOMEWHERE BETWEEN THESE TWO LINES ===== END
-		# else:
 		matrixBuilder.add_exit_rate(state.idx, total_full_rate)
 		successors, total_exit_rate = state.successors(True)
 		# states not expanded will go to the absorbing state
@@ -379,8 +379,8 @@ def sanity_check():
 		assert (state is None or state.idx == idx)
 		idx += 1
 	# TODO: remove this intensive check when we've found the bug
-	for _, sid in state_ids.items():
-		assert sid < len(all_states)
+	# for _, sid in state_ids.items():
+	# 	assert sid < len(all_states)
 	print("done.")
 
 def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfying_state_idxs : list, time_bound : int, crn : Crn = None):
@@ -454,7 +454,8 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	components = SparseModelComponents(matrix, labeling, {}, rate_transitions=True)
 	prop_bound = "" if time_bound is None else f"[0, {time_bound}]"
 	chk_property = f"P=? [ true U{prop_bound} \"satisfy\" ]"
-	exit_rates = [rate if rate is not None else 1.0 for rate in matrixBuilder.exit_rates]
+	# [rate if rate is not None else 1.0 for rate in matrixBuilder.exit_rates]
+	exit_rates = matrixBuilder.create_exit_rates()
 	assert len(exit_rates) == matrix.nr_rows
 	components.exit_rates = exit_rates
 	# print(f"Exit rates size = {len(exit_rates)}. Model size = {matrixBuilder.size()}")
