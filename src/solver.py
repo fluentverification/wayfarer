@@ -73,7 +73,7 @@ class RandomAccessSparseMatrixBuilder:
 		if len(self.from_list) <= row:
 			return
 		self.from_list[row] = [e for e in self.from_list[row] if e.col != row]
-		self.exit_rates[row] = None
+		# self.exit_rates[row] = None
 
 	def remove_absorbing_edge(self, row: int):
 		if len(self.from_list) <= row:
@@ -156,15 +156,15 @@ class RandomAccessSparseMatrixBuilder:
 		for i in range(len(self.from_list)):
 			# print(f"{i}: {self.exit_rates[i]}, {[str(entry) for entry in self.from_list[i]]}")
 			if len(self.from_list[i]) == 0:
-				self.exit_rates[i] = None
-				assert (self.exit_rates[i] is None)
+				# self.exit_rates[i] = None
+				# assert (self.exit_rates[i] is None)
 				continue
 			max_entry = max(self.from_list[i])
 			max_rate = max_entry.val
-			if self.exit_rates[i] is not None and not self.exit_rates[i] >= max_rate and not np.isclose(self.exit_rates[i] - max_rate, 0):
-				print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
-			assert (self.exit_rates[i] is None or (self.exit_rates[i] >=
-			        max_rate or math.isclose(max_rate, self.exit_rates[i])))
+			# if self.exit_rates[i] is not None and not self.exit_rates[i] >= max_rate and not np.isclose(self.exit_rates[i] - max_rate, 0):
+			# print(f"Error: {self.exit_rates[i]} < {max_rate} (state index {i})")
+			# assert (self.exit_rates[i] is None or (self.exit_rates[i] >=
+		        # max_rate or math.isclose(max_rate, self.exit_rates[i])))
 			# TODO: remove this extra check
 			# rs = self.row_sum(i)
 			# if not np.isclose(self.exit_rates[i], rs):
@@ -209,7 +209,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			num_satstates += 1
 			sat_states.append(curr_state_data.idx)
 			# We will create a self-loop later, so declare the total exit rate as 1.0
-			matrixBuilder.add_exit_rate(curr_state_data.idx, 1.0)
+			# matrixBuilder.add_exit_rate(curr_state_data.idx, 1.0)
 			matrixBuilder.add_next_value(curr_state_data.idx, curr_state_data.idx, 1.0)
 			curr_state_data.perimeter = False
 			continue
@@ -229,7 +229,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 		# to the absorbing state. We do this since we only take reactions in that subspace
 		if total_full_rate > total_expanded_rate:
 			matrixBuilder.add_next_value(curr_state_data.idx, 0, total_full_rate - total_expanded_rate)
-		matrixBuilder.add_exit_rate(curr_state_data.idx, total_full_rate)
+		# matrixBuilder.add_exit_rate(curr_state_data.idx, total_full_rate)
 		for s, rate in successors:
 			next_state = s.vec
 			# If the state is new, we explore it
@@ -289,7 +289,8 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 		# We need to iterate over the states first, then the cycles.
 		for cycle in State.cycles:
 			# We have to go both forwards and backwards
-			for directed_cycle in [cycle.ordered_reactions, cycle.ordered_reactions[::-1]]:
+			cycle_transitions = cycle.ordered_reactions  # cycle.order_by_rate(state.vec)
+			for directed_cycle in [cycle_transitions, cycle_transitions[::-1]]:
 				# We can apply the cycle forward and backward. We apply forward first.
 				cur_state = state
 				cur_state_idx = state.idx
@@ -346,13 +347,14 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 
 	for state_id in cycle_states:
 		assert state_id != 0
+		assert next_available_idx == len(all_states)
 		state = all_states[state_id]
 		state.perimeter = False
 		total_full_rate = state.get_total_outgoing_rate()
 		if not was_added_by_cnc(state_id):
 			matrixBuilder.remove_self_loop(state_id)
 			matrixBuilder.remove_absorbing_edge(state_id)
-		matrixBuilder.add_exit_rate(state.idx, total_full_rate)
+		# matrixBuilder.add_exit_rate(state.idx, total_full_rate)
 		successors, total_exit_rate = state.successors(True)
 		# states not expanded will go to the absorbing state
 		rate_to_abs = total_full_rate - total_exit_rate
@@ -361,6 +363,15 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 				next_idx = state_ids[stup]
 				assert next_idx != 0
 				matrixBuilder.add_next_value(state.idx, next_idx, rate)
+			# If the successor is a satisfying state we should add it anyway
+			elif satisfies(stup, crn.boundary):
+				# Add a new state
+				next_state = State(np.matrix(stup).T, next_available_idx, need_compute_order=False)
+				state_ids[stup] = next_state.idx
+				next_available_idx += 1
+				all_states.append(next_state)
+				next_state.perimeter = True
+				matrixBuilder.add_next_value(state.idx, next_state.idx, rate)
 			else:
 				rate_to_abs += rate
 		if rate_to_abs > 0.0:
@@ -390,6 +401,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	# NOTE: in the paper, we flush the queue, however here, we go through all states and connect all PERIMETER
 	# states to the absorbing, which is the same thing.
 	num_perim_satstates = 0
+	next_available_idx = len(all_states)
 	for state in all_states[1::]:
 		if state.perimeter:
 			if satisfies(state.vec, crn.boundary):
@@ -397,18 +409,11 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 				num_perim_satstates += 1
 				satisfying_state_idxs.append(state.idx)
 				# We will create a self-loop later, so declare the total exit rate as 1.0
-				matrixBuilder.add_exit_rate(state.idx, 1.0)
+				# matrixBuilder.add_exit_rate(state.idx, 1.0)
 				matrixBuilder.add_next_value(state.idx, state.idx, 1.0)
 				# deadlock_idxs.append(state.idx)
 				state.perimeter = False
 				continue
-			# else:
-			# 	if len(State.commutable_transitions) > 0:
-			# 		pass  # TODO
-			# 	if len(State.orthocycles) > 0:
-			# 		pass  # TODO
-			# 	if len(State.non_orthocycles) > 0:
-			# 		pass  # TODO
 			# Expand the state and create transitions ONLY TO EXISTING STATES
 			successors, total_exit_rate = state.successors(True)
 			total_full_rate = state.get_total_outgoing_rate()
@@ -419,11 +424,23 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 				if stup in state_ids:
 					next_idx = state_ids[stup]
 					matrixBuilder.add_next_value(state.idx, next_idx, rate)
+				elif satisfies(stup, crn.boundary):
+					# We can easily just add this state.
+					num_perim_satstates += 1
+					next_state = State(np.matrix(stup).T, next_available_idx, need_compute_order=False)
+					state_ids[stup] = next_state.idx
+					next_available_idx += 1
+					all_states.append(next_state)
+					next_state.perimeter = True
+					matrixBuilder.add_next_value(state.idx, next_state.idx, rate)
+					matrixBuilder.add_next_value(next_state.idx, next_state.idx, 1.0)
+					satisfying_state_idxs.append(next_state.idx)
+
 				else:
 					rate_to_abs += rate
 			if rate_to_abs > 0.0:
 				matrixBuilder.add_next_value(state.idx, 0, rate_to_abs)
-			matrixBuilder.add_exit_rate(state.idx, total_full_rate)
+			# matrixBuilder.add_exit_rate(state.idx, total_full_rate)
 	if num_perim_satstates > 0:
 		print(f"We found an additional {
 		      num_perim_satstates} satisfying states in the perimeter state indecies!")

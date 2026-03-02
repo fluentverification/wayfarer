@@ -25,6 +25,10 @@ class Cycle:
 		# if not np.any(self.__in_s0):
 		# 	raise Exception("Cycle must leave S0 (else it may be useless)!")
 		self.is_orthocycle = np.all(self.__in_s0)
+		if len(self.ordered_reactions) == 2:
+			self.ordered_reactions = (3 * [self.ordered_reactions[0]]) + (3 * [self.ordered_reactions[1]])
+	def order_by_rate(self, state_vec) -> list:
+		return sorted(self.ordered_reactions, key=lambda t: t.rate_finder(state_vec), reverse=True)
 
 	def __check_cycle_valid(self):
 		sum = self.ordered_reactions[0].vec_as_mat
