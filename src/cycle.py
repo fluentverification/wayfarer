@@ -6,6 +6,7 @@ from pulp import LpProblem, LpMinimize, LpVariable, lpSum, LpInteger, LpStatus, 
 
 import time
 from copy import deepcopy
+from itertools import permutations
 
 from crn import *
 # from sbspc import Subspace
@@ -22,11 +23,13 @@ class Cycle:
 		self.ordered_reactions = ordered_reactions.copy()
 		self.__check_cycle_valid()
 		self.__in_s0 = [r.in_s0 for r in ordered_reactions]
+		self.is_commute_cycle = False
 		# if not np.any(self.__in_s0):
 		# 	raise Exception("Cycle must leave S0 (else it may be useless)!")
 		self.is_orthocycle = np.all(self.__in_s0)
 		if len(self.ordered_reactions) == 2:
 			self.ordered_reactions = (3 * [self.ordered_reactions[0]]) + (3 * [self.ordered_reactions[1]])
+			self.is_commute_cycle = True
 	def order_by_rate(self, state_vec) -> list:
 		return sorted(self.ordered_reactions, key=lambda t: t.rate_finder(state_vec), reverse=True)
 
@@ -53,6 +56,12 @@ class Cycle:
 
 	def __str__(self):
 		return ' <-> '.join([t.name for t in self.ordered_reactions])
+
+	def perms(self):
+		# if len(self.ordered_reactions) == 2 or self.is_commute_cycle:
+		return [self.ordered_reactions, self.ordered_reactions[::-1]]
+		# ps = [(perm, perm[::-1]) for perm in list(permutations(self.ordered_reactions))[::4]]
+		# return [perm for perm_and_reverse in ps for perm in perm_and_reverse]
 
 
 def get_commutable_transitions(crn : Crn, s0, _ss) -> list:

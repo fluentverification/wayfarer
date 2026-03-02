@@ -289,8 +289,8 @@ def apply_cycles(matrixBuilder, crn, next_available_idx):
 		# We need to iterate over the states first, then the cycles.
 		for cycle in State.cycles:
 			# We have to go both forwards and backwards
-			cycle_transitions = cycle.ordered_reactions  # cycle.order_by_rate(state.vec)
-			for directed_cycle in [cycle_transitions, cycle_transitions[::-1]]:
+			# cycle_transitions = cycle.ordered_reactions  # cycle.order_by_rate(state.vec)
+			for directed_cycle in cycle.perms(): # [cycle_transitions, cycle_transitions[::-1]]:
 				# We can apply the cycle forward and backward. We apply forward first.
 				cur_state = state
 				cur_state_idx = state.idx
