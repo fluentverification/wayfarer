@@ -260,7 +260,8 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 	if num_satstates == 0:
 		print(f"Could not find any satisfying states!")
 		return
-	apply_cycles(matrixBuilder, crn, last_index, sat_states)
+	if cnc:
+		apply_cycles(matrixBuilder, crn, last_index, sat_states)
 	sanity_check()
 	finalize_and_check(matrixBuilder, sat_states, time_bound, crn)
 
@@ -351,6 +352,7 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 		assert next_available_idx == len(all_states)
 		state = all_states[state_id]
 		state.perimeter = False
+		assert state_id == state.idx
 		total_full_rate = state.get_total_outgoing_rate()
 		if not was_added_by_cnc(state_id):
 			matrixBuilder.remove_self_loop(state_id)
@@ -368,11 +370,13 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 			elif satisfies(stup, crn.boundary):
 				# Add a new state
 				next_state = State(np.matrix(stup).T, next_available_idx, need_compute_order=False)
+				next_state.perimeter = False
 				state_ids[stup] = next_state.idx
 				next_available_idx += 1
 				all_states.append(next_state)
-				next_state.perimeter = True
 				matrixBuilder.add_next_value(state.idx, next_state.idx, rate)
+				matrixBuilder.add_next_value(next_state.idx, next_state.idx, 1.0)
+				sat_indecies.append(next_state.idx)
 			else:
 				rate_to_abs += rate
 		if rate_to_abs > 0.0:
@@ -382,7 +386,7 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 
 # This can become a lemma when we eventually use Nagini to verify this
 def sanity_check():
-	print("Performing sanity check...", end="")
+	print("Performing sanity check...", end="", flush=True)
 	global all_states
 	global state_ids
 	# Check our indecies
@@ -483,8 +487,10 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	print(f"Checking model with formula `{chk_property}`")
 	prop = stormpy.parse_properties(chk_property)[0]  # stormpy.Property("Lower Bound", )
 	env = stormpy.Environment()
-	env.solver_environment.native_solver_environment.precision = stormpy.Rational(1e-100)
+	env.solver_environment.native_solver_environment.precision = stormpy.Rational(1e-50)
+	start_time = time.time()
 	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
+	print(f"Model checking took {time.time() - start_time} seconds.")
 	print(f"Pmin = {result.at(1)}")
 	assert (result.min + 1e-6 >= 0.0 and result.max <= 1.0 + 1e-6)
 	if SolverSettings.COMPUTE_UPPER_BOUND:

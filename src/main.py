@@ -59,7 +59,7 @@ def subspace_priority_solver(filename, bound_fname, num, time_bound, agnostic=Fa
 		piped_matrix = create_piped(crn, use_rate_const)
 		Subspace.initialize_piped(piped_matrix)
 	start_time = time.time()
-	min_probability_subsp(crn, dep, number=num, print_when_done=True, write_when_done=store_traces, time_bound=time_bound, expand_all_states=all_expand, single_order=single_order, cnc=False)
+	min_probability_subsp(crn, dep, number=num, print_when_done=True, write_when_done=store_traces, time_bound=time_bound, expand_all_states=all_expand, single_order=single_order, cnc=cnc)
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 
@@ -103,6 +103,8 @@ if __name__=="__main__":
 			help="If reaction rate ought to be calculated by something other than the standard rate constant method, a Python file may be provided here in order to perform these custom calculations. Will look for a function called rate_finder(state : arraylike, rate_constant : float, reaction_name : str) -> float")
 	parser.add_argument("-U", "--upper", action="store_true",
 			help="Also compute upper bound")
+	parser.add_argument("-c", "--cycle", action="store_true",
+			help="Attempt to build cycles and add them to the state space which may increase the lower bound.")
 	args = parser.parse_args()
 	store_traces = args.traces
 	if args.ragtimer is None:
@@ -130,7 +132,8 @@ if __name__=="__main__":
 						, agnostic=args.agnostic
 						, piped=args.piped
 						, all_expand=args.expand_all
-						, use_rate_const=args.rate_constant)
+						, use_rate_const=args.rate_constant
+						, cnc=args.cycle)
 
 	if args.solver:
 		t = None
@@ -146,7 +149,8 @@ if __name__=="__main__":
 						, piped=args.piped
 						, all_expand=args.expand_all
 						, single_order=True
-						, use_rate_const=args.rate_constant)
+						, use_rate_const=args.rate_constant
+						, cnc=args.cycle)
 
 	if args.primitive:
 		basic_priority(args.ragtimer, args.variable_bounds, num=num)
