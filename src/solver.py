@@ -75,6 +75,11 @@ class RandomAccessSparseMatrixBuilder:
 		self.from_list[row] = [e for e in self.from_list[row] if e.col != row]
 		# self.exit_rates[row] = None
 
+	def clear_row(self, row: int):
+		if len(self.from_list) <= row:
+			return
+		self.from_list[row] = []
+
 	def remove_absorbing_edge(self, row: int):
 		if len(self.from_list) <= row:
 			return
@@ -108,6 +113,8 @@ class RandomAccessSparseMatrixBuilder:
 		for row in range(len(self.from_list)):
 			self.from_list[row].sort()
 			if len(self.from_list[row]) == 0:
+				with open("model.tra", 'a') as f:
+					f.write(f"{row} {row} 1.0\n")
 				matrix_builder.add_next_value(row, row, 1.0)
 			for entry in self.from_list[row]:
 				col = entry.col
@@ -117,7 +124,11 @@ class RandomAccessSparseMatrixBuilder:
 						raise Exception(f"State {row} should only have one edge: a self loop. Got {
 						                len(self.from_list[row])} edges!\n{','.join([str(e) for e in self.from_list[row]])}")
 					matrix_builder.add_next_value(row, col, 1.0)
+					with open("model.tra", 'a') as f:
+						f.write(f"{row} {col} 1.0\n")
 					break
+				with open("model.tra", 'a') as f:
+					f.write(f"{row} {col} {val}\n")
 				matrix_builder.add_next_value(row, col, val)
 		return matrix_builder
 
@@ -228,7 +239,8 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 		# If this is true there are some transitions we didn't expand that we must lead
 		# to the absorbing state. We do this since we only take reactions in that subspace
 		if total_full_rate > total_expanded_rate:
-			matrixBuilder.add_next_value(curr_state_data.idx, 0, total_full_rate - total_expanded_rate)
+			if not cnc:
+				matrixBuilder.add_next_value(curr_state_data.idx, 0, total_full_rate - total_expanded_rate)
 		# matrixBuilder.add_exit_rate(curr_state_data.idx, total_full_rate)
 		for s, rate in successors:
 			next_state = s.vec
@@ -253,7 +265,8 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 				s.reach += s_old.reach
 			assert (s.idx is not None)
 			# Place the transition in the matrix
-			matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
+			if not cnc:
+				matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
 	if print_when_done:
 		print(f"Explored {len(matrixBuilder.from_list)} states (expanded {
 		      num_explored}). Found {num_satstates} satisfying states.")
@@ -304,6 +317,7 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 						break
 					# Get the next state and see if it's new or not
 					next_state_vec = cur_state.vec + t.vector
+					satisfying = satisfies(next_state_vec, crn.boundary)
 					if np.any(next_state_vec < 0.0):
 						break
 
@@ -321,6 +335,8 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 						# matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
 						cur_state = all_states[next_idx]
 						cur_state_idx = next_idx
+						if satisfying or cur_state.perimeter:
+							break
 					else:
 						# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
 						# in the graph, since otherwise finalize_and_check() will take care of that
@@ -334,7 +350,7 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 						all_states.append(next_state)
 						cur_state = next_state
 						cur_state_idx = next_state.idx
-						if satisfies(next_state_vec, crn.boundary):
+						if satisfying:
 							# NOTE: since it is a perimeter state, its index will be added to satisfying_state_idxs in finalize_and_check()
 							# satisfying_state_idxs.append(next_available_idx)
 							# We do not need to continue down this cycle
@@ -344,19 +360,20 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 	cycle_state_idxs_maximum = next_available_idx - 1
 
 	# Nifty little local lambda to tell us if a state was added by cycle and commute
-	def was_added_by_cnc(state_id: int):
-		return state_id >= cycle_state_idxs_minimum and state_id < cycle_state_idxs_maximum
+	# def was_added_by_cnc(state_id: int):
+		# return state_id >= cycle_state_idxs_minimum and state_id < cycle_state_idxs_maximum
 
 	for state_id in cycle_states:
 		assert state_id != 0
 		assert next_available_idx == len(all_states)
 		state = all_states[state_id]
-		state.perimeter = False
+		# state.perimeter = False
 		assert state_id == state.idx
 		total_full_rate = state.get_total_outgoing_rate()
-		if not was_added_by_cnc(state_id):
-			matrixBuilder.remove_self_loop(state_id)
-			matrixBuilder.remove_absorbing_edge(state_id)
+		# if not was_added_by_cnc(state_id):
+		# 	matrixBuilder.clear_row(state_id)
+			# matrixBuilder.remove_self_loop(state_id)
+			# matrixBuilder.remove_absorbing_edge(state_id)
 		# matrixBuilder.add_exit_rate(state.idx, total_full_rate)
 		successors, total_exit_rate = state.successors(True)
 		# states not expanded will go to the absorbing state
@@ -459,20 +476,32 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	assert matrix.nr_columns == matrix.nr_rows
 	print(f"Number of rows in matrix: {matrix.nr_rows}")
 	labeling = StateLabeling(matrixBuilder.size())
+	label_file = [[] for _ in range(len(all_states))]
+	with open("model.lab", 'a') as lf:
+		lf.write("0=\"init\" 1=\"satisfy\" 2=\"absorbing\" 3=\"deadlock\"\n")
 	# Add initial state labeling
 	labeling.add_label("init")
 	labeling.add_label_to_state("init", 1)
+	label_file[1].append(0)
 	labeling.add_label("satisfy")
 	labeling.add_label("absorbing")
 	labeling.add_label_to_state("absorbing", 0)
+	label_file[0].append(2)
 	for idx in satisfying_state_idxs:
 		assert idx < matrix.nr_rows
 		labeling.add_label_to_state("satisfy", idx)
+		label_file[idx].append(1)
 	# Add the deadlock state indexes
 	labeling.add_label("deadlock")
 	for idx in deadlock_idxs:
 		assert idx < matrix.nr_rows
 		labeling.add_label_to_state("deadlock", idx)
+		label_file[idx].append(3)
+	with open("model.lab", 'a') as lf:
+		for i, r in enumerate(label_file):
+			lf.write(f"{i}: ")
+			lf.write(' '.join([str(ri) for ri in r]))
+			lf.write("\n")
 	components = SparseModelComponents(matrix, labeling, {}, rate_transitions=True)
 	prop_bound = "" if time_bound is None else f"[0, {time_bound}]"
 	chk_property = f"P=? [ true U{prop_bound} \"satisfy\" ]"
@@ -487,7 +516,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	print(f"Checking model with formula `{chk_property}`")
 	prop = stormpy.parse_properties(chk_property)[0]  # stormpy.Property("Lower Bound", )
 	env = stormpy.Environment()
-	env.solver_environment.native_solver_environment.precision = stormpy.Rational(1e-50)
+	env.solver_environment.native_solver_environment.precision = stormpy.Rational(1e-25)
 	start_time = time.time()
 	result = stormpy.check_model_sparse(model, prop, only_initial_states=True)
 	print(f"Model checking took {time.time() - start_time} seconds.")
