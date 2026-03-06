@@ -113,8 +113,8 @@ class RandomAccessSparseMatrixBuilder:
 		for row in range(len(self.from_list)):
 			self.from_list[row].sort()
 			if len(self.from_list[row]) == 0:
-				with open("model.tra", 'a') as f:
-					f.write(f"{row} {row} 1.0\n")
+				# with open("model.tra", 'a') as f:
+				# 	f.write(f"{row} {row} 1.0\n")
 				matrix_builder.add_next_value(row, row, 1.0)
 			for entry in self.from_list[row]:
 				col = entry.col
@@ -124,11 +124,11 @@ class RandomAccessSparseMatrixBuilder:
 						raise Exception(f"State {row} should only have one edge: a self loop. Got {
 						                len(self.from_list[row])} edges!\n{','.join([str(e) for e in self.from_list[row]])}")
 					matrix_builder.add_next_value(row, col, 1.0)
-					with open("model.tra", 'a') as f:
-						f.write(f"{row} {col} 1.0\n")
+					# with open("model.tra", 'a') as f:
+					# 	f.write(f"{row} {col} 1.0\n")
 					break
-				with open("model.tra", 'a') as f:
-					f.write(f"{row} {col} {val}\n")
+				# with open("model.tra", 'a') as f:
+				# 	f.write(f"{row} {col} {val}\n")
 				matrix_builder.add_next_value(row, col, val)
 		return matrix_builder
 
@@ -347,12 +347,11 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 							sat_indecies.append(next_state.idx)
 							break
 
-	for state_id in cycle_states:
-		assert state_id != 0
+	for state in all_states[1::]: # cycle_states:
 		assert next_available_idx == len(all_states)
-		state = all_states[state_id]
 		# state.perimeter = False
-		assert state_id == state.idx
+		state_id = state.idx
+		assert state_id != 0
 		# We will re-build the list of transitions here
 		matrixBuilder.clear_row(state_id)
 		total_full_rate = state.get_total_outgoing_rate()
@@ -458,8 +457,8 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 	print(f"Number of rows in matrix: {matrix.nr_rows}")
 	labeling = StateLabeling(matrixBuilder.size())
 	label_file = [[] for _ in range(len(all_states))]
-	with open("model.lab", 'a') as lf:
-		lf.write("0=\"init\" 1=\"satisfy\" 2=\"absorbing\" 3=\"deadlock\"\n")
+	# with open("model.lab", 'a') as lf:
+		# lf.write("0=\"init\" 1=\"satisfy\" 2=\"absorbing\" 3=\"deadlock\"\n")
 	# Add initial state labeling
 	labeling.add_label("init")
 	labeling.add_label_to_state("init", 1)
@@ -478,11 +477,11 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 		assert idx < matrix.nr_rows
 		labeling.add_label_to_state("deadlock", idx)
 		label_file[idx].append(3)
-	with open("model.lab", 'a') as lf:
-		for i, r in enumerate(label_file):
-			lf.write(f"{i}: ")
-			lf.write(' '.join([str(ri) for ri in r]))
-			lf.write("\n")
+	# with open("model.lab", 'a') as lf:
+		# for i, r in enumerate(label_file):
+			# lf.write(f"{i}: ")
+			# lf.write(' '.join([str(ri) for ri in r]))
+			# lf.write("\n")
 	components = SparseModelComponents(matrix, labeling, {}, rate_transitions=True)
 	prop_bound = "" if time_bound is None else f"[0, {time_bound}]"
 	chk_property = f"P=? [ true U{prop_bound} \"satisfy\" ]"
