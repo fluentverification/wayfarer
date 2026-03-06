@@ -289,8 +289,6 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 	assert next_available_idx == len(all_states)
 	# The set of all states encountered by cycle and commute
 	cycle_states = set()
-	# Any state between this and the maximum was guaranteed to have been added by cycle and commute
-	cycle_state_idxs_minimum = next_available_idx
 	# First we will apply all of the cycles, creating internal connections, and then create connections
 	# between states that have been newly created if there is a one-step transition between them.
 	for state in all_states[1::]:
@@ -321,18 +319,11 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 					if np.any(next_state_vec < 0.0):
 						break
 
-					# cur_state.perimeter = False
-					# rate = t.rate_finder(cur_state.vec)
 					nsvt = tuple(next_state_vec)
 					if nsvt in state_ids:
-						# State is not new, just add it to the matrix builder
+						# State is not new
 						next_idx = state_ids[nsvt]
-						# if matrixBuilder.has_entry(cur_state_idx, next_idx):
-						# 	# No need to add the entry since it already exists
-						# 	continue
-						if cur_state_idx == next_idx:
-							print(f"Warning: Wanted self-loop on index {next_idx}")
-						# matrixBuilder.add_next_value(cur_state_idx, next_idx, rate)
+						assert cur_state_idx != next_idx
 						cur_state = all_states[next_idx]
 						cur_state_idx = next_idx
 						if satisfying or cur_state.perimeter:
@@ -344,9 +335,7 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 						next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
 						state_ids[nsvt] = next_state.idx
 
-						total_outgoing_rate = next_state.get_total_outgoing_rate()
 						next_available_idx += 1
-						# next_state.perimeter = True
 						all_states.append(next_state)
 						cur_state = next_state
 						cur_state_idx = next_state.idx
@@ -357,11 +346,6 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 							# cycle_states.add(next_state.idx)
 							sat_indecies.append(next_state.idx)
 							break
-	cycle_state_idxs_maximum = next_available_idx - 1
-
-	# Nifty little local lambda to tell us if a state was added by cycle and commute
-	# def was_added_by_cnc(state_id: int):
-		# return state_id >= cycle_state_idxs_minimum and state_id < cycle_state_idxs_maximum
 
 	for state_id in cycle_states:
 		assert state_id != 0
@@ -369,12 +353,9 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 		state = all_states[state_id]
 		# state.perimeter = False
 		assert state_id == state.idx
+		# We will re-build the list of transitions here
+		matrixBuilder.clear_row(state_id)
 		total_full_rate = state.get_total_outgoing_rate()
-		# if not was_added_by_cnc(state_id):
-		# 	matrixBuilder.clear_row(state_id)
-			# matrixBuilder.remove_self_loop(state_id)
-			# matrixBuilder.remove_absorbing_edge(state_id)
-		# matrixBuilder.add_exit_rate(state.idx, total_full_rate)
 		successors, total_exit_rate = state.successors(True)
 		# states not expanded will go to the absorbing state
 		rate_to_abs = total_full_rate - total_exit_rate
