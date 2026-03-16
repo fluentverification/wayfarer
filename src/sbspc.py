@@ -130,18 +130,19 @@ class State:
 	# @staticmethod
 
 	def initialize_static_vars(crn, dep, single_order=False, cnc=False):
+		if cnc:
+			# State.commutable_transitions = get_commutable_transitions(
+				# crn, State.subspaces[0], State.subspaces[len(State.subspaces) - 1])
+			# Populate cycles
+			ctrans = [(idx, transition) for idx, transition in enumerate(
+				crn.transitions)]  # if is_cyclable(transition, State.subspaces[0])]
+			# print([transition.vec_as_mat.T for _, transition in ctrans])
+			State.cycles = get_cycles(crn, ctrans)
+
 		if not single_order:
 			State.subspaces = dep.create_subspaces(crn)
 			# Commutable transitions
 			print(State.subspaces[0].P)
-			if cnc:
-				State.commutable_transitions = get_commutable_transitions(
-					crn, State.subspaces[0], State.subspaces[len(State.subspaces) - 1])
-				# Populate cycles
-				ctrans = [(idx, transition) for idx, transition in enumerate(
-					crn.transitions)]  # if is_cyclable(transition, State.subspaces[0])]
-				# print([transition.vec_as_mat.T for _, transition in ctrans])
-				State.cycles = get_cycles(crn, ctrans)
 
 		else:
 			# Do not create subspaces. Will only compare actual euclidian distance

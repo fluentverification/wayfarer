@@ -59,7 +59,9 @@ class Cycle:
 
 	def perms(self):
 		# if len(self.ordered_reactions) == 2 or self.is_commute_cycle:
-		return [self.ordered_reactions, self.ordered_reactions[::-1]]
+		if self.is_commute_cycle:
+			return [self.ordered_reactions, self.ordered_reactions[::-1]]
+		return list(permutations(self.ordered_reactions))
 		# ps = [(perm, perm[::-1]) for perm in list(permutations(self.ordered_reactions))[::4]]
 		# return [perm for perm_and_reverse in ps for perm in perm_and_reverse]
 

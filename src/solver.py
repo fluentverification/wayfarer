@@ -183,6 +183,9 @@ class RandomAccessSparseMatrixBuilder:
 			# 	# raise Exception(f"State {i} has differing exit rates and row sums! {
 			# 	#                self.exit_rates[i]} vs {rs}")
 
+def stotup(state) -> tuple:
+	return tuple(map(lambda i: int(i), state))
+
 def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False, single_order=False, cnc=False):
 	global all_states
 	global state_ids
@@ -245,7 +248,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 		for s, rate in successors:
 			next_state = s.vec
 			# If the state is new, we explore it
-			next_state_tuple = tuple(next_state)
+			next_state_tuple = stotup(next_state)
 			if next_state_tuple not in state_ids:
 				next_index = len(all_states)
 				all_states.append(s)
@@ -254,7 +257,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 				state_ids[next_state_tuple] = last_index
 				s.idx = last_index
 				last_index += 1
-				next_state_tuple = tuple(next_state)
+				next_state_tuple = stotup(next_state)
 				# Only explore new states
 				pq.put(s)
 			# If this state already exists, use the state data we already have
@@ -300,9 +303,7 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 			continue
 		# We need to iterate over the states first, then the cycles.
 		for cycle in State.cycles:
-			# We have to go both forwards and backwards
-			# cycle_transitions = cycle.ordered_reactions  # cycle.order_by_rate(state.vec)
-			for directed_cycle in cycle.perms(): # [cycle_transitions, cycle_transitions[::-1]]:
+			for directed_cycle in cycle.perms():
 				# We can apply the cycle forward and backward. We apply forward first.
 				cur_state = state
 				cur_state_idx = state.idx
@@ -319,7 +320,8 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 					if np.any(next_state_vec < 0.0):
 						break
 
-					nsvt = tuple(next_state_vec)
+					nsvt = stotup(next_state_vec)
+					# print(f"Next state tuple: {nsvt}")
 					if nsvt in state_ids:
 						# State is not new
 						next_idx = state_ids[nsvt]
@@ -347,10 +349,11 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 							sat_indecies.append(next_state.idx)
 							break
 
-	for state in all_states[1::]: # cycle_states:
+	for state in all_states[1::]:
 		assert next_available_idx == len(all_states)
 		# state.perimeter = False
 		state_id = state.idx
+		state.perimeter = False
 		assert state_id != 0
 		# We will re-build the list of transitions here
 		matrixBuilder.clear_row(state_id)
