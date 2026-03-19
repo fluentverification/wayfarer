@@ -266,7 +266,7 @@ class State:
 			# TODO: why is this IndexError'ing on some models?
 			subspace = self.sbsp  # State.subspaces[max(0, len(State.subspaces) - (self.order + 2))]
 			# print(max(0, len(State.subspaces) - (self.order + 2)))
-			if all_successors: # or (incl_rand and random.random() < 0.001):
+			if all_successors:
 				# If the CRN variable is passed into get_update_vectors, all successors are returned
 				update_vectors = State.crn.transitions  # subspace.get_update_vectors(State.crn)
 			else:
