@@ -230,7 +230,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 
 		# Total expanded rate: the rate of transitions we EXPANDED in the graph
 		# Total full rate: the total rate of all POSSIBLE enabled transitions from this state.
-		successors, total_expanded_rate = curr_state_data.successors(all_successors=expand_all_states)
+		successors, total_expanded_rate = curr_state_data.successors(all_successors=expand_all_states, incl_rand=True)
 		total_full_rate = curr_state_data.get_total_outgoing_rate()
 		# print(total_full_rate, total_expanded_rate)
 		assert (total_full_rate + 1e-5 >= total_expanded_rate)
@@ -358,7 +358,7 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 		# We will re-build the list of transitions here
 		matrixBuilder.clear_row(state_id)
 		total_full_rate = state.get_total_outgoing_rate()
-		successors, total_exit_rate = state.successors(True)
+		successors, total_exit_rate = state.successors(True, all_successors=True)
 		# states not expanded will go to the absorbing state
 		rate_to_abs = total_full_rate - total_exit_rate
 		for stup, rate in successors:
@@ -420,7 +420,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 				state.perimeter = False
 				continue
 			# Expand the state and create transitions ONLY TO EXISTING STATES
-			successors, total_exit_rate = state.successors(True)
+			successors, total_exit_rate = state.successors(True, all_successors=True)
 			total_full_rate = state.get_total_outgoing_rate()
 			# states not expanded will go to the absorbing state
 			rate_to_abs = total_full_rate - total_exit_rate

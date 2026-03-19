@@ -4,6 +4,7 @@ from crn import *
 from distance import vass_distance
 from fractions import Fraction
 import numpy as np
+import random
 USE_CUDA = False
 VERIFY = True
 
@@ -245,7 +246,7 @@ class State:
 				total_rate += rate
 		return total_rate
 
-	def successors(self, only_tuples : bool = False, all_successors : bool = False):  # -> tuple:
+	def successors(self, only_tuples : bool = False, all_successors : bool = False, incl_rand : bool = False):  # -> tuple:
 		'''
 		Only returns the successors using the vectors in the dependency graph
 		that get us closer to the target.
@@ -265,7 +266,7 @@ class State:
 			# TODO: why is this IndexError'ing on some models?
 			subspace = self.sbsp  # State.subspaces[max(0, len(State.subspaces) - (self.order + 2))]
 			# print(max(0, len(State.subspaces) - (self.order + 2)))
-			if all_successors:
+			if all_successors: # or (incl_rand and random.random() < 0.001):
 				# If the CRN variable is passed into get_update_vectors, all successors are returned
 				update_vectors = State.crn.transitions  # subspace.get_update_vectors(State.crn)
 			else:
@@ -275,6 +276,8 @@ class State:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)
+				# if t.name in ["R1", "R2", "R4", "R6", "R7"]:
+					# print(f"For state {self.vec}, transition {t.name} with rate constant {t.rate_constant} returned rate {rate}")
 				if rate < 0.0:
 					print(
 						f"Error: Got rate {rate} < 0.0 for state {self.vec} with index {self.idx} and update vector {t.name}")
