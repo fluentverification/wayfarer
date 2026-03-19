@@ -186,10 +186,10 @@ class RandomAccessSparseMatrixBuilder:
 def stotup(state) -> tuple:
 	return tuple(map(lambda i: int(i), state))
 
-def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False, single_order=False, cnc=False):
+def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_done=False, time_bound=None, expand_all_states=False, single_order=False, cnc=False, cycle_count=3):
 	global all_states
 	global state_ids
-	State.initialize_static_vars(crn, dep, single_order=single_order, cnc=cnc)
+	State.initialize_static_vars(crn, dep, single_order=single_order, cnc=cnc, cycle_count=cycle_count)
 	state_ids = {}
 	all_states = []
 	# Add the absorbing state
@@ -291,63 +291,11 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 	global state_ids
 	assert next_available_idx == len(all_states)
 	# The set of all states encountered by cycle and commute
-	cycle_states = set()
+	# cycle_states = set()
 	# First we will apply all of the cycles, creating internal connections, and then create connections
 	# between states that have been newly created if there is a one-step transition between them.
-	for state in all_states[1::]:
-		# Do not apply cycles to satisfying states
-		if satisfies(state.vec, crn.boundary):
-			continue
-		# Do not apply cycles to perimeter states (we do not want to expand them anyway)
-		if state.perimeter:
-			continue
-		# We need to iterate over the states first, then the cycles.
-		for cycle in State.cycles:
-			for directed_cycle in cycle.perms():
-				# We can apply the cycle forward and backward. We apply forward first.
-				cur_state = state
-				cur_state_idx = state.idx
-				for t in directed_cycle:
-					assert next_available_idx == len(all_states)
-					# if cur_state.perimeter:
-					# 	break
-					cycle_states.add(cur_state_idx)
-					if not t.enabled(cur_state.vecm):
-						break
-					# Get the next state and see if it's new or not
-					next_state_vec = cur_state.vec + t.vector
-					satisfying = satisfies(next_state_vec, crn.boundary)
-					if np.any(next_state_vec < 0.0):
-						break
 
-					nsvt = stotup(next_state_vec)
-					# print(f"Next state tuple: {nsvt}")
-					if nsvt in state_ids:
-						# State is not new
-						next_idx = state_ids[nsvt]
-						assert cur_state_idx != next_idx
-						cur_state = all_states[next_idx]
-						cur_state_idx = next_idx
-						if satisfying or cur_state.perimeter:
-							break
-					else:
-						# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
-						# in the graph, since otherwise finalize_and_check() will take care of that
-						# matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
-						next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
-						state_ids[nsvt] = next_state.idx
-
-						next_available_idx += 1
-						all_states.append(next_state)
-						cur_state = next_state
-						cur_state_idx = next_state.idx
-						if satisfying:
-							# NOTE: since it is a perimeter state, its index will be added to satisfying_state_idxs in finalize_and_check()
-							# satisfying_state_idxs.append(next_available_idx)
-							# We do not need to continue down this cycle
-							# cycle_states.add(next_state.idx)
-							sat_indecies.append(next_state.idx)
-							break
+	next_available_idx = apply_specific_cycles(State.cycles, crn, sat_indecies)
 
 	for state in all_states[1::]:
 		assert next_available_idx == len(all_states)
@@ -383,6 +331,68 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 			matrixBuilder.add_next_value(state.idx, 0, rate_to_abs)
 
 	print(f"...finished after {time.time() - start_time} seconds.")
+
+def apply_specific_cycles(cycles, crn, sat_indecies) -> int:
+	'''
+Applies a specific list of cycles to the state graph and returns the new total state count
+	'''
+	global all_states
+	global state_ids
+	next_available_idx = len(all_states)
+	for state in all_states[1::]:
+		# Do not apply cycles to satisfying states
+		if satisfies(state.vec, crn.boundary):
+			continue
+		# Do not apply cycles to perimeter states (we do not want to expand them anyway)
+		if state.perimeter:
+			continue
+		# We need to iterate over the states first, then the cycles.
+		for cycle in cycles:
+			for directed_cycle in cycle.perms():
+				# We can apply the cycle forward and backward. We apply forward first.
+				cur_state = state
+				cur_state_idx = state.idx
+				for t in directed_cycle:
+					assert next_available_idx == len(all_states)
+					# if cur_state.perimeter:
+					# 	break
+					if not t.enabled(cur_state.vecm):
+						break
+					# Get the next state and see if it's new or not
+					next_state_vec = cur_state.vec + t.vector
+					satisfying = satisfies(next_state_vec, crn.boundary)
+					if np.any(next_state_vec < 0.0):
+						break
+
+					nsvt = stotup(next_state_vec)
+					# print(f"Next state tuple: {nsvt}")
+					if nsvt in state_ids:
+						# State is not new
+						next_idx = state_ids[nsvt]
+						assert cur_state_idx != next_idx
+						cur_state = all_states[next_idx]
+						cur_state_idx = next_idx
+						if satisfying or cur_state.perimeter:
+							break
+					else:
+						# State is new, so we have to add it. We only have to actually add the edge if the previous state was already
+						# in the graph, since otherwise finalize_and_check() will take care of that
+						# matrixBuilder.add_next_value(cur_state_idx, next_available_idx, rate)
+						next_state = State(next_state_vec, next_available_idx, need_compute_order=False)
+						state_ids[nsvt] = next_state.idx
+
+						next_available_idx += 1
+						all_states.append(next_state)
+						cur_state = next_state
+						cur_state_idx = next_state.idx
+						if satisfying:
+							# NOTE: since it is a perimeter state, its index will be added to satisfying_state_idxs in finalize_and_check()
+							# satisfying_state_idxs.append(next_available_idx)
+							# We do not need to continue down this cycle
+							sat_indecies.append(next_state.idx)
+							break
+	return next_available_idx
+
 
 # This can become a lemma when we eventually use Nagini to verify this
 def sanity_check():

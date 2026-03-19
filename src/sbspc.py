@@ -130,7 +130,7 @@ class State:
 	commutable_transitions : list = []
 	# @staticmethod
 
-	def initialize_static_vars(crn, dep, single_order=False, cnc=False):
+	def initialize_static_vars(crn, dep, single_order=False, cnc=False, cycle_count=3):
 		if cnc:
 			# State.commutable_transitions = get_commutable_transitions(
 				# crn, State.subspaces[0], State.subspaces[len(State.subspaces) - 1])
@@ -138,7 +138,7 @@ class State:
 			ctrans = [(idx, transition) for idx, transition in enumerate(
 				crn.transitions)]  # if is_cyclable(transition, State.subspaces[0])]
 			# print([transition.vec_as_mat.T for _, transition in ctrans])
-			State.cycles = get_cycles(crn, ctrans)
+			State.cycles = get_cycles(crn, ctrans, num=commute_depth)
 
 		if not single_order:
 			State.subspaces = dep.create_subspaces(crn)
