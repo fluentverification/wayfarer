@@ -49,7 +49,7 @@ def subspace_priority(filename, bound_fname, num):
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 
-def subspace_priority_solver(filename, bound_fname, num, time_bound, agnostic=False, piped=False, all_expand=False, single_order=False, use_rate_const=False, cnc=False, commute_depth=3):
+def subspace_priority_solver(filename, bound_fname, num, time_bound, agnostic=False, piped=False, all_expand=False, single_order=False, use_rate_const=False, cnc=False, cycle_count=3):
 	dep, crn = parse_dependency_ragtimer(filename, agnostic=agnostic, dimension_bounds_filename=bound_fname)
 	print("========================================================")
 	print("Targeted Exploration (Subspace - With Solver)")
@@ -59,7 +59,7 @@ def subspace_priority_solver(filename, bound_fname, num, time_bound, agnostic=Fa
 		piped_matrix = create_piped(crn, use_rate_const)
 		Subspace.initialize_piped(piped_matrix)
 	start_time = time.time()
-	min_probability_subsp(crn, dep, number=num, print_when_done=True, write_when_done=store_traces, time_bound=time_bound, expand_all_states=all_expand, single_order=single_order, cnc=cnc, commute_depth=commute_depth)
+	min_probability_subsp(crn, dep, number=num, print_when_done=True, write_when_done=store_traces, time_bound=time_bound, expand_all_states=all_expand, single_order=single_order, cnc=cnc, cycle_count=cycle_count)
 	end_time = time.time()
 	print(f"Total time {end_time - start_time} s")
 
@@ -107,7 +107,7 @@ if __name__=="__main__":
 			help="Attempt to build cycles and add them to the state space which may increase the lower bound.")
 	parser.add_argument("-d", "--depth", default=3,
 			help="When using --cycle, the depth to multiply 'commute cycles' (i.e., cycles made of commutable transitions)")
-	parser.add_argument("-C" "--cycle_count", default=3,
+	parser.add_argument("-C", "--cycle_count", default=3,
 		help="Number of abstract cycles to search for.")
 	args = parser.parse_args()
 	store_traces = args.traces

@@ -279,7 +279,7 @@ class DepGraph:
 					consumer_idxs = [self.species_names.index(consumer_species) for consumer_species in consumer.in_species if consumer_species not in self.used_species]
 					# We want reactions that PRODUCE these in species, so this consumer can fire.
 					# ex., if A + B -> None, and we want to consume B, we must first PRODUCE A
-					count = float(abs(c))
+					count = float(abs(c[0,0]))
 					new_change = np.matrix([(float(i in consumer_idxs) * count) for i in range(len(self.mask))]).T
 					# self.declare_reaction_at_level(consumer, level)
 					next_reactions = self.create_graph(new_change, level + 1)

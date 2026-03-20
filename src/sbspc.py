@@ -138,7 +138,7 @@ class State:
 			ctrans = [(idx, transition) for idx, transition in enumerate(
 				crn.transitions)]  # if is_cyclable(transition, State.subspaces[0])]
 			# print([transition.vec_as_mat.T for _, transition in ctrans])
-			State.cycles = get_cycles(crn, ctrans, num=commute_depth)
+			State.cycles = get_cycles(crn, ctrans, num=cycle_count)
 
 		if not single_order:
 			State.subspaces = dep.create_subspaces(crn)
