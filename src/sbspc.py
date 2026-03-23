@@ -143,7 +143,7 @@ class State:
 		if not single_order:
 			State.subspaces = dep.create_subspaces(crn)
 			# Commutable transitions
-			print(State.subspaces[0].P)
+			# print(State.subspaces[0].P)
 
 		else:
 			# Do not create subspaces. Will only compare actual euclidian distance
