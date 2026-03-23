@@ -121,8 +121,8 @@ class RandomAccessSparseMatrixBuilder:
 				val = entry.val
 				if row == col:
 					if len(self.from_list[row]) != 1:
-						raise Exception(f"State {row} should only have one edge: a self loop. Got {
-						                len(self.from_list[row])} edges!\n{','.join([str(e) for e in self.from_list[row]])}")
+						raise Exception(f"State {row} should only have one edge: a self loop. Got" + \
+							f"{len(self.from_list[row])} edges!\n{','.join([str(e) for e in self.from_list[row]])}")
 					matrix_builder.add_next_value(row, col, 1.0)
 					# with open("model.tra", 'a') as f:
 					# 	f.write(f"{row} {col} 1.0\n")
@@ -271,8 +271,8 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			if not cnc:
 				matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
 	if print_when_done:
-		print(f"Explored {len(matrixBuilder.from_list)} states (expanded {
-		      num_explored}). Found {num_satstates} satisfying states.")
+		print(f"Explored {len(matrixBuilder.from_list)} states" + \
+			f"(expanded {num_explored}). Found {num_satstates} satisfying states.")
 	if num_satstates == 0:
 		print(f"Could not find any satisfying states!")
 		return
@@ -457,8 +457,7 @@ def finalize_and_check(matrixBuilder : RandomAccessSparseMatrixBuilder, satisfyi
 				matrixBuilder.add_next_value(state.idx, 0, rate_to_abs)
 			# matrixBuilder.add_exit_rate(state.idx, total_full_rate)
 	if num_perim_satstates > 0:
-		print(f"We found an additional {
-		      num_perim_satstates} satisfying states in the perimeter state indecies!")
+		print(f"We found an additional {num_perim_satstates} satisfying states in the perimeter state indecies!")
 	deadlock_idxs = matrixBuilder.deadlocks()
 	matrix = matrixBuilder.build()
 	matrixBuilder.assert_all_entries_correct()
