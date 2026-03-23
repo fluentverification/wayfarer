@@ -170,7 +170,6 @@ of the graph. This gives us a set of `num` *reasonably small* cycle vectors.
 The weights are how important it is to minimize each variable
 	'''
 	# TODO: add support for combinations beyond that
-	print("[WARNING] Wayfarer only supports \"first level\" cycle detection currently. This means only linear combinations of null vectors with coefficients equal to 1 or 0")
 	cycles = []
 	start_time = time.time()
 	# utilize PuLP's ILP engine to get potential cycle Parikh vectors
