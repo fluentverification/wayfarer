@@ -105,7 +105,7 @@ if __name__=="__main__":
 			help="Also compute upper bound")
 	parser.add_argument("-c", "--cycle", action="store_true",
 			help="Attempt to build cycles and add them to the state space which may increase the lower bound.")
-	parser.add_argument("-d", "--depth", default=3,
+	parser.add_argument("-d", "--depth", default=5,
 			help="When using --cycle, the depth to multiply 'commute cycles' (i.e., cycles made of commutable transitions)")
 	parser.add_argument("-C", "--cycle_count", default=3,
 		help="Number of abstract cycles to search for.")
