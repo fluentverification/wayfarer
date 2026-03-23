@@ -79,8 +79,8 @@ def get_commutable_transitions(crn : Crn, s0, _ss) -> list:
 		# print(np.all(np.isclose(s0.P * t.vec_as_mat, 0).T))
 		if np.all(np.isclose(s0.P * t.vec_as_mat, 0)):
 			transitions.append(t)
-	print(f"[INFO] Got {len(transitions)} trivially commutable transitions: {
-            ','.join([t.name for t in transitions])}")
+	print(f"[INFO] Got {len(transitions)} trivially commutable transitions:", \
+		','.join([t.name for t in transitions]))
 	return transitions
 
 
