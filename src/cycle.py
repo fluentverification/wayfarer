@@ -246,7 +246,7 @@ The weights are how important it is to minimize each variable
 			for c in cycles:
 				if parallel(c, cycle):
 					unique = False
-					print(f"P.v. {cycle} || {c} so not adding")
+					# print(f"P.v. {cycle} || {c} so not adding")
 					break
 			# Also, the cycle should have an L1 norm of at most 5, otherwise the permutations scale too large
 			l1 = sum(cycle)

@@ -272,12 +272,24 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 				matrixBuilder.add_next_value(curr_state_data.idx, s.idx, rate)
 	if print_when_done:
 		print(f"Explored {len(matrixBuilder.from_list)} states" + \
-			f"(expanded {num_explored}). Found {num_satstates} satisfying states.")
+			f"(expanded {num_explored}). Found {num_satstates} satisfying states.\n")
 	if num_satstates == 0:
 		print(f"Could not find any satisfying states!")
 		return
 	if cnc:
 		assert last_index == len(all_states)
+		# Make an intelligent guess if necessary on the times to repeat cycles
+		if SolverSettings.CYCLE_REPEAT is None:
+			# If the seed state space is less than 10k states, perform cycle repetition
+			# at a rate of 5. If less than 20k, perform it at a rate of 3. Otherwise, it
+			# is too large of a state space for this heuristic to work well
+			if num_explored <= 10000:
+				SolverSettings.CYCLE_REPEAT = 5
+			elif num_explored <= 20000:
+				SolverSettings.CYCLE_REPEAT = 3
+			else:
+				SolverSettings.CYCLE_REPEAT = 1 # No repetition
+			print(f"[INFO] Cycle repetition not specified. Choosing based on model. Repetition factor: {SolverSettings.CYCLE_REPEAT}")
 		apply_cycles(matrixBuilder, crn, last_index, sat_states)
 	sanity_check()
 	finalize_and_check(matrixBuilder, sat_states, time_bound, crn)
@@ -294,13 +306,13 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 
 	# First we will apply all of the cycles, creating internal connections, and then create connections
 	# between states that have been newly created if there is a one-step transition between them.
-	commute_cycles = [c for c in State.cycles if c.is_commute_cycle]
+	repeat_cycles = [c for c in State.cycles if c.is_commute_cycle or len(c.ordered_reactions) < 5]
 	last_start_idx = 1
 	for i in range(SolverSettings.CYCLE_REPEAT):
 		if i != 0:
 			print("repeating...", end="", flush=True)
 			# Only apply the commute cycles on the next iterations to reduce internal complexity
-			next_available_idx = apply_specific_cycles(commute_cycles, crn, sat_indecies, start_idx=last_start_idx)
+			next_available_idx = apply_specific_cycles(repeat_cycles, crn, sat_indecies, start_idx=last_start_idx)
 		else:
 			last_start_idx = next_available_idx
 			next_available_idx = apply_specific_cycles(State.cycles, crn, sat_indecies)
