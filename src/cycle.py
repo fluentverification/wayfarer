@@ -162,6 +162,21 @@ def get_cycles(crn: Crn, transitions: list, num: int = 3) -> list:
 	vecs = get_cycle_vectors(matrix, num, weights=weights)
 	return cycles_from_cycle_vectors(vecs, crn, tran_to_idx)
 
+def parallel(v1, v2):
+	assert len(v1) == len(v2)
+	ratio = None
+	for xi, yi in zip(v1, v2):
+		if (xi == 0) != (yi == 0):
+			return False
+		if xi == 0:
+			continue
+		if ratio is None:
+			ratio = xi / yi
+		elif ratio is not None and xi / yi != ratio:
+			# The ratios are inconsistent
+			return False
+	return True
+
 def get_cycle_vectors(R : np.matrix, num=5, weights: list | None = None):
 	'''
 Any positive integer linear combination of the nullvectors of R are the cycles
@@ -171,6 +186,8 @@ The weights are how important it is to minimize each variable
 	'''
 	# TODO: add support for combinations beyond that
 	cycles = []
+	# solutions we find that are parallel to cycles. this is a quick and dirty hack
+	p_to_cycles = []
 	start_time = time.time()
 	# utilize PuLP's ILP engine to get potential cycle Parikh vectors
 	problem = LpProblem("Cycle_Detection_Problem", sense=LpMinimize)
@@ -178,7 +195,7 @@ The weights are how important it is to minimize each variable
 
 	# Create variables for integer null vectors with bounds 0-2
 	n = R.shape[1]  # Number of columns
-	x = [LpVariable(f'x{i}', lowBound=0, upBound=2, cat='Integer') for i in range(n)]
+	x = [LpVariable(f'x{i}', lowBound=0, upBound=5, cat='Integer') for i in range(n)]
 
 	if weights is not None:
 		assert len(weights) == n
@@ -202,11 +219,21 @@ The weights are how important it is to minimize each variable
 		problem += lpSum(x) >= 1  # At least one component must be greater than zero
 
 		# Exclude previously found solutions
-		for cycle in cycles:
+		for j, cycle in enumerate(cycles + p_to_cycles):
 			# Add constraints to ensure not equal to any previously found vector
 			# At least one component is different
-			problem += lpSum([x[i] - cycle[i] for i in range(n)]
-			                 ) >= 1 or lpSum([cycle[i] - x[i] for i in range(n)]) >= 1
+			# TODO: I think this line is introducing bugs and excluding possible
+			# solutions. Imagine vectors [1 0 0] and [0 1 0]. This will fail both conditions,
+			# although these two vectors are distinct
+			# problem += lpSum([x[i] - cycle[i] for i in range(n)]
+			                 # ) >= 1 or lpSum([cycle[i] - x[i] for i in range(n)]) >= 1
+			# problem += lpSum([abs(x[i] - cycle[i]) for i in range(n)]) >= 1
+			y = [LpVariable(f'y{i}_{j}', lowBound=0, upBound=5, cat='Integer') for i in range(n)]
+			for i, yi in enumerate(y):
+				problem += yi >= x[i] - cycle[i]
+				problem += yi >= cycle[i] - x[i]
+			problem += lpSum(y) >= 1
+			
 
 		# Solve the problem
 		problem.solve(solver)
@@ -214,11 +241,25 @@ The weights are how important it is to minimize each variable
 		# Check results
 		if problem.status == LpStatusOptimal:
 			cycle = [value(var) for var in x]
-			cycles.append(cycle)
+			# Only append the new Parikh vector if it is not parallel to any existing Parikh vector
+			unique = True
+			for c in cycles:
+				if parallel(c, cycle):
+					unique = False
+					print(f"P.v. {cycle} || {c} so not adding")
+					break
+			# Also, the cycle should have an L1 norm of at most 5, otherwise the permutations scale too large
+			l1 = sum(cycle)
+			if unique and l1 <= 5:
+				cycles.append(cycle)
+			elif l1 > 5:
+				# Just break at this point since it's unlikely we find any new parikh vectors and each call gives us diminishing returns
+				break
+			elif not unique:
+				p_to_cycles.append(cycle)
 		else:
 			break
 	print(f"[INFO] Found {len(cycles)} cycles after {time.time() - start_time} s.")
-
 	return cycles
 
 def get_ordered_reactions(crn : Crn) -> list:

@@ -216,9 +216,6 @@ class State:
 			# print(s.rank, end=",")
 			ep = s.dist(self.adj)
 			# For some reason the floating point thing has some issues
-			# if ep == 0:
-			# if ep > 1e-14 and ep < 1e-12:
-			# print(f"Gotcha! {ep} on state {self.vec} for {s}")
 			if ep < 1e-8:  # To account for floating point error
 				self.sbsp = s
 				# print()
@@ -276,8 +273,6 @@ class State:
 			# print(f"Update vector: {t.name} vec {t.vector}...", end="")
 			if t.enabled(self.vec):
 				rate = t.rate_finder(self.vec)
-				# if t.name in ["R1", "R2", "R4", "R6", "R7"]:
-					# print(f"For state {self.vec}, transition {t.name} with rate constant {t.rate_constant} returned rate {rate}")
 				if rate < 0.0:
 					print(
 						f"Error: Got rate {rate} < 0.0 for state {self.vec} with index {self.idx} and update vector {t.name}")
@@ -289,12 +284,8 @@ class State:
 				if only_tuples:
 					succ.append((tuple(self.vec + t.vector), rate))
 					continue
-				# print("enabled")
-				# print("Update", t.vector)
 				next_state = State(self.vec + t.vector)
 				# The rate finder works on the current state, not the next
-				# print("vec", self.vec)
-				# print("new vec", next_state.vec)
 				# Due to the cycle-free nature of the dependency graph, we
 				# can ignore successors with a higher distance if both the
 				# current state and successor have order 0 (are in the last subspace)
