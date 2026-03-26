@@ -16,29 +16,35 @@ from fractions import Fraction
 
 class Cycle:
 	commute_depth = 3
-	def __init__(self, ordered_reactions : list, crn: Crn):
+	def __init__(self, ordered_reactions : list, crn: Crn, no_exand_commute: bool=False):
 		'''
 	Creates an object which represents a cycle in the abstract.
 		'''
 		self.__crn = crn
 		self.ordered_reactions = ordered_reactions.copy()
-		self.__check_cycle_valid()
+		self.ordered_reactions_min = None
+		# self.__check_cycle_valid()
 		self.__in_s0 = [r.in_s0 for r in ordered_reactions]
 		self.is_commute_cycle = False
 		# if not np.any(self.__in_s0):
 		# 	raise Exception("Cycle must leave S0 (else it may be useless)!")
 		self.is_orthocycle = np.all(self.__in_s0)
-		if len(self.ordered_reactions) == 2:
+		if len(self.ordered_reactions) == 2 and not no_exand_commute:
 			COMMUTE_DEPTH=Cycle.commute_depth
+			self.ordered_reactions_min = self.ordered_reactions.copy()
 			self.ordered_reactions = (COMMUTE_DEPTH * [self.ordered_reactions[0]]) + (COMMUTE_DEPTH * [self.ordered_reactions[1]])
 			self.is_commute_cycle = True
 	def order_by_rate(self, state_vec) -> list:
 		return sorted(self.ordered_reactions, key=lambda t: t.rate_finder(state_vec), reverse=True)
 
 	def __check_cycle_valid(self):
-		sum = self.ordered_reactions[0].vec_as_mat
-		for r in self.ordered_reactions[1::]:
+		sum = np.zeros(len(self.ordered_reactions[0].vec_as_mat)) #.clone()
+		print(sum, flush=True)
+		print(self.ordered_reactions[0].name)
+		for r in self.ordered_reactions:
+			print(r.vec_as_mat)
 			sum += r.vec_as_mat
+		print(sum)
 		assert (np.all(np.isclose(sum, 0)))
 
 	def apply_cycle(self, state : np.matrix) -> list | None:
@@ -66,6 +72,15 @@ class Cycle:
 		return list(permutations(self.ordered_reactions))
 		# ps = [(perm, perm[::-1]) for perm in list(permutations(self.ordered_reactions))[::4]]
 		# return [perm for perm_and_reverse in ps for perm in perm_and_reverse]
+	
+	def to_small_commute_cycle(self):
+		'''
+	If a commute cycle, returns the smallest version of that cycle with no multiplicity. If not
+	just returns a pointer to itself.
+		'''
+		if self.is_commute_cycle:
+			return Cycle(self.ordered_reactions_min.copy(), self.__crn, no_exand_commute=True)
+		return self
 
 
 def get_commutable_transitions(crn : Crn, s0, _ss) -> list:
