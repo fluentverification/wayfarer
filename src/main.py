@@ -109,6 +109,8 @@ if __name__=="__main__":
 			help="When using --cycle, the depth to multiply 'commute cycles' (i.e., cycles made of commutable transitions)")
 	parser.add_argument("-C", "--cycle_count", default=3,
 		help="Number of abstract cycles to search for.")
+	parser.add_argument("-Z", "--cycle_repeat", default=1,
+		help="Number of times to repeatedly apply cycles (higher numbers mean larger state graphs but there are also diminishing returns).")
 	args = parser.parse_args()
 	store_traces = args.traces
 	if args.ragtimer is None:
@@ -126,6 +128,7 @@ if __name__=="__main__":
 		parse_custom_rate_finder(args.rate_finder)
 
 	SolverSettings.COMPUTE_UPPER_BOUND = args.upper
+	SolverSettings.CYCLE_REPEAT = int(args.cycle_repeat)
 	if args.subspace:
 		subspace_priority(args.ragtimer, args.variable_bounds, num=num)
 

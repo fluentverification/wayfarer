@@ -291,13 +291,21 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 	global all_states
 	global state_ids
 	assert next_available_idx == len(all_states)
-	# The set of all states encountered by cycle and commute
-	# cycle_states = set()
+
 	# First we will apply all of the cycles, creating internal connections, and then create connections
 	# between states that have been newly created if there is a one-step transition between them.
-	for _ in range(SolverSettings.CYCLE_REPEAT):
-		next_available_idx = apply_specific_cycles(State.cycles, crn, sat_indecies)
+	commute_cycles = [c for c in State.cycles if c.is_commute_cycle]
+	last_start_idx = 1
+	for i in range(SolverSettings.CYCLE_REPEAT):
+		if i != 0:
+			print("repeating...", end="", flush=True)
+			# Only apply the commute cycles on the next iterations to reduce internal complexity
+			next_available_idx = apply_specific_cycles(commute_cycles, crn, sat_indecies, start_idx=last_start_idx)
+		else:
+			last_start_idx = next_available_idx
+			next_available_idx = apply_specific_cycles(State.cycles, crn, sat_indecies)
 
+	# Re-construct edges
 	for state in all_states[1::]:
 		assert next_available_idx == len(all_states)
 		# state.perimeter = False
@@ -333,14 +341,15 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 
 	print(f"...finished after {time.time() - start_time} seconds.")
 
-def apply_specific_cycles(cycles, crn, sat_indecies) -> int:
+def apply_specific_cycles(cycles, crn, sat_indecies, start_idx = 1) -> int:
 	'''
-Applies a specific list of cycles to the state graph and returns the new total state count
+Applies a specific list of cycles to the state graph and returns the new total state count. The start index 
+is the first state index to start applying cycles to. Generally this is the initial state (index 1).
 	'''
 	global all_states
 	global state_ids
 	next_available_idx = len(all_states)
-	for state in all_states[1::]:
+	for state in all_states[start_idx::]:
 		# Do not apply cycles to satisfying states
 		if satisfies(state.vec, crn.boundary):
 			continue
