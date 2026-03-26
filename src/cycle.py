@@ -225,14 +225,14 @@ The weights are how important it is to minimize each variable
 			# TODO: I think this line is introducing bugs and excluding possible
 			# solutions. Imagine vectors [1 0 0] and [0 1 0]. This will fail both conditions,
 			# although these two vectors are distinct
-			# problem += lpSum([x[i] - cycle[i] for i in range(n)]
-			                 # ) >= 1 or lpSum([cycle[i] - x[i] for i in range(n)]) >= 1
+			problem += lpSum([x[i] - cycle[i] for i in range(n)]
+			                 ) >= 1 or lpSum([cycle[i] - x[i] for i in range(n)]) >= 1
 			# problem += lpSum([abs(x[i] - cycle[i]) for i in range(n)]) >= 1
-			y = [LpVariable(f'y{i}_{j}', lowBound=0, upBound=5, cat='Integer') for i in range(n)]
-			for i, yi in enumerate(y):
-				problem += yi >= x[i] - cycle[i]
-				problem += yi >= cycle[i] - x[i]
-			problem += lpSum(y) >= 1
+			# y = [LpVariable(f'y{i}_{j}', lowBound=0, upBound=5, cat='Integer') for i in range(n)]
+			# for i, yi in enumerate(y):
+			# 	problem += yi >= x[i] - cycle[i]
+			# 	problem += yi >= cycle[i] - x[i]
+			# problem += lpSum(y) >= 1
 			
 
 		# Solve the problem

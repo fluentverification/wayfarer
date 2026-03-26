@@ -16,7 +16,7 @@ class SolverSettings:
 	ABSORBING_INDEX = 0
 	PRINT_FREQUENCY = 100000
 	COMPUTE_UPPER_BOUND = False
-
+	CYCLE_REPEAT = 1
 
 all_states = []
 state_ids = {}
@@ -277,6 +277,7 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 		print(f"Could not find any satisfying states!")
 		return
 	if cnc:
+		assert last_index == len(all_states)
 		apply_cycles(matrixBuilder, crn, last_index, sat_states)
 	sanity_check()
 	finalize_and_check(matrixBuilder, sat_states, time_bound, crn)
@@ -294,8 +295,8 @@ def apply_cycles(matrixBuilder, crn, next_available_idx, sat_indecies):
 	# cycle_states = set()
 	# First we will apply all of the cycles, creating internal connections, and then create connections
 	# between states that have been newly created if there is a one-step transition between them.
-
-	next_available_idx = apply_specific_cycles(State.cycles, crn, sat_indecies)
+	for _ in range(SolverSettings.CYCLE_REPEAT):
+		next_available_idx = apply_specific_cycles(State.cycles, crn, sat_indecies)
 
 	for state in all_states[1::]:
 		assert next_available_idx == len(all_states)
@@ -344,7 +345,7 @@ Applies a specific list of cycles to the state graph and returns the new total s
 		if satisfies(state.vec, crn.boundary):
 			continue
 		# Do not apply cycles to perimeter states (we do not want to expand them anyway)
-		if state.perimeter:
+		if state.perimeter and SolverSettings.CYCLE_REPEAT == 1:
 			continue
 		# We need to iterate over the states first, then the cycles.
 		for cycle in cycles:
