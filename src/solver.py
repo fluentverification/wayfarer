@@ -283,7 +283,9 @@ def min_probability_subsp(crn, dep, number=1, print_when_done=False, write_when_
 			# If the seed state space is less than 10k states, perform cycle repetition
 			# at a rate of 5. If less than 20k, perform it at a rate of 3. Otherwise, it
 			# is too large of a state space for this heuristic to work well
-			if num_explored <= 10000:
+			if num_explored <= 4000:
+				SolverSettings.CYCLE_REPEAT = 10
+			elif num_explored <= 10000:
 				SolverSettings.CYCLE_REPEAT = 5
 			elif num_explored <= 20000:
 				SolverSettings.CYCLE_REPEAT = 3
